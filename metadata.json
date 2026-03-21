@@ -1,0 +1,7 @@
+{
+  "name": "DayTrack",
+  "description": "A personal productivity app for tracking tasks, calendar events, focus sessions, and daily routines with real-time sync.",
+  "requestFramePermissions": [
+    "notifications"
+  ]
+}

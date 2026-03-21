@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user-specific settings and profile information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "User's unique ID" },
+        "displayName": { "type": "string", "description": "User's full name" },
+        "avatarUrl": { "type": "string", "description": "URL to user's avatar" },
+        "timezone": { "type": "string", "description": "User's preferred timezone" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "displayName", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A productivity task.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Task title" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "done"] },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "subtasks": { "type": "array", "description": "List of subtasks" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "priority", "status", "userId"]
+    },
+    "CalendarEvent": {
+      "title": "Calendar Event",
+      "description": "An event on the user's calendar.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "reminderMin": { "type": "integer" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "startTime", "endTime", "userId"]
+    },
+    "FocusSession": {
+      "title": "Focus Session",
+      "description": "A completed focus or pomodoro session.",
+      "type": "object",
+      "properties": {
+        "sessionType": { "type": "string", "enum": ["pomodoro", "custom"] },
+        "durationMin": { "type": "integer" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completed": { "type": "boolean" },
+        "taskId": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["sessionType", "durationMin", "startedAt", "userId"]
+    },
+    "Routine": {
+      "title": "Routine",
+      "description": "A recurring daily habit.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "timeOfDay": { "type": "string" },
+        "daysOfWeek": { "type": "array", "items": { "type": "integer" } },
+        "isActive": { "type": "boolean" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "timeOfDay", "daysOfWeek", "userId"]
+    },
+    "RoutineLog": {
+      "title": "Routine Log",
+      "description": "A log of a completed routine for a specific date.",
+      "type": "object",
+      "properties": {
+        "routineId": { "type": "string" },
+        "logDate": { "type": "string", "format": "date" },
+        "done": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["routineId", "logDate", "userId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": { "schema": "UserProfile", "description": "User profile document" },
+    "tasks/{taskId}": { "schema": "Task", "description": "Tasks collection" },
+    "calendar_events/{eventId}": { "schema": "CalendarEvent", "description": "Calendar events collection" },
+    "focus_sessions/{sessionId}": { "schema": "FocusSession", "description": "Focus sessions collection" },
+    "routines/{routineId}": { "schema": "Routine", "description": "Routines collection" },
+    "routine_logs/{logId}": { "schema": "RoutineLog", "description": "Routine logs collection" }
+  }
+}
