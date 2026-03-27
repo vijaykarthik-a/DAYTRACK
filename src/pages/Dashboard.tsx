@@ -100,21 +100,21 @@ const Dashboard: React.FC = () => {
       {/* Header & Clock */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h2 className="text-stone-400 font-bold text-xs uppercase tracking-widest mb-2">
+          <h2 className="text-on-surface-variant font-bold text-xs uppercase tracking-widest mb-2">
             {format(currentTime, 'EEEE, MMMM do')}
           </h2>
-          <h1 className="text-4xl font-bold tracking-tight text-stone-900">
+          <h1 className="text-4xl font-bold tracking-tight text-on-surface">
             Hey, {profile?.displayName.split(' ')[0] || 'User'}
           </h1>
         </div>
-        <div className="bg-white px-6 py-4 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-4">
-          <Clock className="text-orange-500" size={24} />
+        <div className="bg-surface-container-lowest px-6 py-4 rounded-2xl shadow-sm border border-outline-variant/20 flex items-center gap-4">
+          <Clock className="text-primary" size={24} />
           <div className="flex flex-col">
-            <p className="text-3xl font-semibold tracking-tight text-stone-900 leading-none flex items-baseline gap-1">
+            <p className="text-3xl font-semibold tracking-tight text-on-surface leading-none flex items-baseline gap-1">
               {format(currentTime, 'h:mm')}
-              <span className="text-xl text-stone-400 font-medium">{format(currentTime, ':ss a')}</span>
+              <span className="text-xl text-on-surface-variant font-medium">{format(currentTime, ':ss a')}</span>
             </p>
-            <p className="text-xs font-medium text-stone-400 mt-1">Live Time</p>
+            <p className="text-xs font-medium text-on-surface-variant mt-1">Live Time</p>
           </div>
         </div>
       </div>
@@ -124,27 +124,27 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-8 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Task Progress Card */}
-            <div className="bg-stone-900 rounded-3xl p-8 text-white shadow-md relative overflow-hidden group">
+            <div className="bg-surface-container-highest rounded-3xl p-8 text-on-surface shadow-md relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
                 <CheckSquare size={120} />
               </div>
               <div className="relative z-10">
-                <h3 className="text-stone-400 font-semibold text-xs uppercase tracking-wider mb-8 flex items-center gap-2">
-                  <TrendingUp size={14} className="text-orange-500" />
+                <h3 className="text-on-surface-variant font-semibold text-xs uppercase tracking-wider mb-8 flex items-center gap-2">
+                  <TrendingUp size={14} className="text-primary" />
                   Daily Velocity
                 </h3>
                 <div className="flex items-end gap-4 mb-6">
                   <p className="text-6xl font-bold tracking-tight">
-                    {completedTasks}<span className="text-stone-600 text-3xl">/{todayTasks.length}</span>
+                    {completedTasks}<span className="text-outline-variant text-3xl">/{todayTasks.length}</span>
                   </p>
                 </div>
-                <div className="w-full h-3 bg-stone-800 rounded-full overflow-hidden mb-4">
+                <div className="w-full h-3 bg-surface-container-lowest rounded-full overflow-hidden mb-4">
                   <div 
-                    className="h-full bg-orange-600 transition-all duration-1000 ease-out"
+                    className="h-full bg-primary transition-all duration-1000 ease-out"
                     style={{ width: `${taskProgress}%` }}
                   />
                 </div>
-                <p className="text-stone-400 text-sm font-medium">
+                <p className="text-on-surface-variant text-sm font-medium">
                   {remainingTasks === 0 && todayTasks.length > 0 
                     ? "Peak performance achieved." 
                     : `${remainingTasks} objectives remaining.`}
@@ -153,27 +153,27 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* Routine Progress Card */}
-            <div className="bg-white rounded-3xl p-8 border border-stone-100 shadow-sm relative overflow-hidden group">
+            <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/20 shadow-sm relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
                 <Repeat size={120} />
               </div>
               <div className="relative z-10">
-                <h3 className="text-stone-400 font-semibold text-xs uppercase tracking-wider mb-8 flex items-center gap-2">
-                  <Star size={14} className="text-orange-500" />
+                <h3 className="text-on-surface-variant font-semibold text-xs uppercase tracking-wider mb-8 flex items-center gap-2">
+                  <Star size={14} className="text-primary" />
                   Consistency Flow
                 </h3>
                 <div className="flex items-end gap-4 mb-6">
-                  <p className="text-6xl font-bold tracking-tight text-stone-900">
-                    {completedRoutines}<span className="text-stone-300 text-3xl">/{todayRoutines.length}</span>
+                  <p className="text-6xl font-bold tracking-tight text-on-surface">
+                    {completedRoutines}<span className="text-outline-variant text-3xl">/{todayRoutines.length}</span>
                   </p>
                 </div>
-                <div className="w-full h-3 bg-stone-50 rounded-full overflow-hidden mb-4">
+                <div className="w-full h-3 bg-surface-container-low rounded-full overflow-hidden mb-4">
                   <div 
-                    className="h-full bg-orange-600 transition-all duration-1000 ease-out"
+                    className="h-full bg-primary transition-all duration-1000 ease-out"
                     style={{ width: `${routineProgress}%` }}
                   />
                 </div>
-                <p className="text-stone-400 text-sm font-medium">
+                <p className="text-on-surface-variant text-sm font-medium">
                   {routineProgress === 100 ? "Flow state maintained." : "Keep the momentum going."}
                 </p>
               </div>
@@ -181,23 +181,23 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Next Objective Card */}
-          <div className="bg-orange-50 rounded-3xl p-8 border border-orange-100 relative overflow-hidden">
+          <div className="bg-primary-container/20 rounded-3xl p-8 border border-primary/20 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center gap-5">
-                <div className="w-16 h-16 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-orange-200">
+                <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-on-primary shadow-md shadow-primary/20">
                   <Zap size={28} fill="currentColor" />
                 </div>
                 <div>
-                  <h3 className="text-stone-500 font-semibold text-xs uppercase tracking-wider mb-1">Next Objective</h3>
-                  <p className="text-xl font-bold text-stone-900">
+                  <h3 className="text-on-surface-variant font-semibold text-xs uppercase tracking-wider mb-1">Next Objective</h3>
+                  <p className="text-xl font-bold text-on-surface">
                     {nextTask ? nextTask.title : "No pending tasks"}
                   </p>
-                  <p className="text-orange-600 font-medium text-sm mt-1">
+                  <p className="text-primary font-medium text-sm mt-1">
                     {nextTask ? `Priority: ${nextTask.priority}` : "Enjoy your free time!"}
                   </p>
                 </div>
               </div>
-              <Link to="/tasks" className="bg-stone-900 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:bg-stone-800 transition-all shadow-md">
+              <Link to="/tasks" className="bg-surface-container-highest text-on-surface px-6 py-3 rounded-xl font-semibold flex items-center gap-2 hover:bg-surface-container transition-all shadow-md">
                 Execute <ChevronRight size={20} />
               </Link>
             </div>
@@ -207,33 +207,33 @@ const Dashboard: React.FC = () => {
         {/* Right Column: Quick Actions & Focus */}
         <div className="lg:col-span-4 space-y-8">
           {/* Focus Mode Card */}
-          <div className="bg-stone-950 rounded-3xl p-8 text-white shadow-lg flex flex-col justify-between min-h-[280px] relative overflow-hidden">
+          <div className="bg-surface-container-highest rounded-3xl p-8 text-on-surface shadow-lg flex flex-col justify-between min-h-[280px] relative overflow-hidden">
             <div className="absolute -bottom-10 -right-10 opacity-10">
               <Timer size={200} />
             </div>
             <div className="relative z-10">
-              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-8">
-                <Timer size={24} className="text-orange-500" />
+              <div className="w-12 h-12 bg-surface-container-lowest/10 rounded-2xl flex items-center justify-center mb-8">
+                <Timer size={24} className="text-primary" />
               </div>
               <h3 className="text-2xl font-bold tracking-tight mb-3">Focus Zone</h3>
-              <p className="text-stone-400 font-medium leading-relaxed mb-8">
+              <p className="text-on-surface-variant font-medium leading-relaxed mb-8">
                 Eliminate distractions and enter deep work mode.
               </p>
             </div>
-            <Link to="/focus" className="relative z-10 flex items-center gap-2 bg-orange-600 hover:bg-orange-500 transition-all py-4 px-6 rounded-xl font-semibold w-full justify-center shadow-md">
+            <Link to="/focus" className="relative z-10 flex items-center gap-2 bg-primary text-on-primary hover:opacity-90 transition-all py-4 px-6 rounded-xl font-semibold w-full justify-center shadow-md">
               <Play size={20} fill="currentColor" className="ml-1" />
               Enter Focus
             </Link>
           </div>
 
           {/* Quick Routine List */}
-          <div className="bg-white rounded-3xl p-8 border border-stone-100 shadow-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/20 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-stone-900 font-bold flex items-center gap-2">
-                <Repeat size={18} className="text-orange-600" />
+              <h3 className="text-on-surface font-bold flex items-center gap-2">
+                <Repeat size={18} className="text-primary" />
                 Checklist
               </h3>
-              <Link to="/routines" className="text-stone-300 hover:text-stone-900 transition-colors">
+              <Link to="/routines" className="text-outline-variant hover:text-on-surface transition-colors">
                 <ChevronRight size={20} />
               </Link>
             </div>
@@ -241,16 +241,16 @@ const Dashboard: React.FC = () => {
               {todayRoutines.slice(0, 4).map(routine => {
                 const isDone = routineLogs.some(log => log.routineId === routine.id && log.done);
                 return (
-                  <div key={routine.id} className="flex items-center gap-4 p-4 rounded-2xl bg-stone-50 border border-stone-100 group hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                  <div key={routine.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low border border-outline-variant/20 group hover:bg-surface-container hover:shadow-md transition-all cursor-pointer">
                     <div className={cn(
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-                      isDone ? "bg-orange-600 border-orange-600" : "border-stone-200 group-hover:border-orange-400"
+                      isDone ? "bg-primary border-primary" : "border-outline-variant group-hover:border-primary/50"
                     )}>
-                      {isDone && <CheckCircle2 size={12} className="text-white" />}
+                      {isDone && <CheckCircle2 size={12} className="text-on-primary" />}
                     </div>
                     <span className={cn(
                       "flex-1 text-sm font-semibold transition-all",
-                      isDone ? "text-stone-400 line-through" : "text-stone-700"
+                      isDone ? "text-outline-variant line-through" : "text-on-surface"
                     )}>
                       {routine.title}
                     </span>
@@ -258,7 +258,7 @@ const Dashboard: React.FC = () => {
                 );
               })}
               {todayRoutines.length === 0 && (
-                <p className="text-stone-400 text-sm font-bold italic text-center py-4">No routines today.</p>
+                <p className="text-on-surface-variant text-sm font-bold italic text-center py-4">No routines today.</p>
               )}
             </div>
           </div>

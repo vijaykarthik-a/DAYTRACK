@@ -81,6 +81,53 @@
         "userId": { "type": "string" }
       },
       "required": ["routineId", "logDate", "userId"]
+    },
+    "TrackerHabit": {
+      "title": "Tracker Habit",
+      "description": "A daily habit to track on the grid.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "color", "userId"]
+    },
+    "TrackerLog": {
+      "title": "Tracker Log",
+      "description": "A log of a completed habit for a specific date.",
+      "type": "object",
+      "properties": {
+        "habitId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "userId": { "type": "string" }
+      },
+      "required": ["habitId", "date", "userId"]
+    },
+    "StudySubject": {
+      "title": "Study Subject",
+      "description": "A subject or course of study.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "color", "userId"]
+    },
+    "StudyNote": {
+      "title": "Study Note",
+      "description": "A note or document for a study subject.",
+      "type": "object",
+      "properties": {
+        "subjectId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["subjectId", "title", "content", "userId", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -89,6 +136,10 @@
     "calendar_events/{eventId}": { "schema": "CalendarEvent", "description": "Calendar events collection" },
     "focus_sessions/{sessionId}": { "schema": "FocusSession", "description": "Focus sessions collection" },
     "routines/{routineId}": { "schema": "Routine", "description": "Routines collection" },
-    "routine_logs/{logId}": { "schema": "RoutineLog", "description": "Routine logs collection" }
+    "routine_logs/{logId}": { "schema": "RoutineLog", "description": "Routine logs collection" },
+    "tracker_habits/{habitId}": { "schema": "TrackerHabit", "description": "Tracker habits collection" },
+    "tracker_logs/{logId}": { "schema": "TrackerLog", "description": "Tracker logs collection" },
+    "study_subjects/{subjectId}": { "schema": "StudySubject", "description": "Study subjects collection" },
+    "study_notes/{noteId}": { "schema": "StudyNote", "description": "Study notes collection" }
   }
 }

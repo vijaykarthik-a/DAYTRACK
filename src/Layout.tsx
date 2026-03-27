@@ -1,16 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  CheckSquare, 
-  Calendar as CalendarIcon, 
-  Timer, 
-  Repeat, 
-  LogOut, 
-  Menu, 
-  X 
-} from 'lucide-react';
 import { useAuth } from './AuthContext';
+import { useTheme } from './ThemeContext';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -20,15 +11,18 @@ function cn(...inputs: ClassValue[]) {
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { profile, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const navigate = useNavigate();
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-    { name: 'Calendar', path: '/calendar', icon: CalendarIcon },
-    { name: 'Focus', path: '/focus', icon: Timer },
-    { name: 'Routines', path: '/routines', icon: Repeat },
+    { name: 'Dashboard', path: '/', icon: 'dashboard' },
+    { name: 'Tasks', path: '/tasks', icon: 'check_circle' },
+    { name: 'Calendar', path: '/calendar', icon: 'calendar_today' },
+    { name: 'Focus', path: '/focus', icon: 'timer' },
+    { name: 'Routines', path: '/routines', icon: 'repeat' },
+    { name: 'Tracker', path: '/tracker', icon: 'analytics' },
+    { name: 'Study', path: '/study', icon: 'school' },
   ];
 
   const handleLogout = async () => {
@@ -37,88 +31,109 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-background text-on-background flex flex-col md:flex-row font-body selection:bg-primary-container selection:text-on-primary-container transition-colors duration-500">
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-r border-stone-200 h-screen sticky top-0">
-        <div className="p-6">
-          <h1 className="text-2xl font-black tracking-tighter text-orange-600 uppercase">DayTrack</h1>
+      <aside className="hidden md:flex flex-col w-64 bg-surface-container-lowest border-r border-outline-variant/20 h-screen fixed left-0 top-0 p-4 overflow-y-auto z-50 dark-scrollbar transition-colors duration-500">
+        <div className="mb-8 px-2 flex items-center justify-between">
+          <div>
+            <span className="text-2xl font-black text-primary italic tracking-tighter font-headline">DayTrack</span>
+            <p className="font-headline font-bold text-sm tracking-tight text-outline uppercase mt-1">Editorial Productivity</p>
+          </div>
+          <button onClick={toggleTheme} className="p-2 text-on-surface-variant hover:text-on-surface transition-colors rounded-full hover:bg-surface-container">
+            <span className="material-symbols-outlined">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+          </button>
         </div>
         
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 space-y-1">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={({ isActive }) => cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+                "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 font-headline font-bold text-sm tracking-tight",
                 isActive 
-                  ? "bg-orange-50 text-orange-700 font-bold shadow-sm shadow-orange-100" 
-                  : "text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+                  ? "bg-primary-container/30 text-primary" 
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
               )}
             >
-              <item.icon size={20} />
-              {item.name}
+              {({ isActive }) => (
+                <>
+                  <span className={cn("material-symbols-outlined", isActive && "filled")}>{item.icon}</span>
+                  <span>{item.name}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-stone-100">
-          <div className="flex items-center gap-3 px-4 py-3 mb-2">
-            <img 
-              src={profile?.avatarUrl || `https://picsum.photos/seed/${profile?.displayName}/100/100`} 
-              alt="Avatar" 
-              className="w-10 h-10 rounded-full border border-stone-200"
-              referrerPolicy="no-referrer"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{profile?.displayName}</p>
-              <p className="text-xs text-stone-400 truncate">Personal Plan</p>
-            </div>
-          </div>
+        <div className="mt-auto pt-4 border-t border-outline-variant/20 space-y-1">
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-stone-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all duration-200"
+            className="flex items-center gap-3 w-full px-4 py-3 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-lg transition-colors duration-200 font-headline font-bold text-sm tracking-tight text-left"
           >
-            <LogOut size={20} />
-            Logout
+            <span className="material-symbols-outlined">logout</span>
+            <span>Logout</span>
           </button>
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden">
+              <img 
+                src={profile?.avatarUrl || `https://picsum.photos/seed/${profile?.displayName}/100/100`} 
+                alt="User" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-headline font-bold text-sm tracking-tight text-on-surface truncate max-w-[120px]">{profile?.displayName}</span>
+              <span className="text-[10px] text-on-surface-variant font-medium">Pro Member</span>
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* Mobile Header */}
-      <header className="md:hidden bg-white border-b border-stone-200 p-4 flex items-center justify-between sticky top-0 z-50">
-        <h1 className="text-xl font-black tracking-tighter text-orange-600 uppercase">DayTrack</h1>
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 text-stone-500"
-        >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+      <header className="md:hidden bg-surface-container-lowest border-b border-outline-variant/20 p-4 flex items-center justify-between sticky top-0 z-50 transition-colors duration-500">
+        <h1 className="text-xl font-black tracking-tighter text-primary font-headline italic">DayTrack</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={toggleTheme} className="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+            <span className="material-symbols-outlined">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+          </button>
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 text-on-surface-variant hover:text-on-surface"
+          >
+            <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+          </button>
+        </div>
       </header>
 
       {/* Mobile Nav Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-white z-40 pt-20 px-6">
-          <nav className="space-y-4">
+        <div className="md:hidden fixed inset-0 bg-surface-container-lowest z-40 pt-20 px-6 transition-colors duration-500">
+          <nav className="space-y-2">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={({ isActive }) => cn(
-                  "flex items-center gap-4 py-4 text-lg rounded-xl px-4",
-                  isActive ? "bg-orange-50 text-orange-700 font-black" : "text-stone-600"
+                  "flex items-center gap-4 py-4 text-lg rounded-xl px-4 font-headline font-bold",
+                  isActive ? "bg-primary-container/30 text-primary" : "text-on-surface-variant"
                 )}
               >
-                <item.icon size={24} />
-                {item.name}
+                {({ isActive }) => (
+                  <>
+                    <span className={cn("material-symbols-outlined text-2xl", isActive && "filled")}>{item.icon}</span>
+                    {item.name}
+                  </>
+                )}
               </NavLink>
             ))}
             <button 
               onClick={handleLogout}
-              className="flex items-center gap-4 py-4 text-lg text-red-600 px-4 w-full text-left"
+              className="flex items-center gap-4 py-4 text-lg text-error px-4 w-full text-left font-headline font-bold mt-4"
             >
-              <LogOut size={24} />
+              <span className="material-symbols-outlined text-2xl">logout</span>
               Logout
             </button>
           </nav>
@@ -126,22 +141,27 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
+      <main className="flex-1 md:ml-64 p-4 md:p-8 min-h-screen relative overflow-hidden transition-colors duration-500">
         {children}
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-6 py-3 flex justify-between items-center z-50">
-        {navItems.map((item) => (
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface-container-lowest/90 backdrop-blur-xl border-t border-outline-variant/20 px-2 py-3 flex justify-around items-center z-50 transition-colors duration-500">
+        {navItems.slice(0, 5).map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => cn(
-              "p-2 rounded-lg transition-colors",
-              isActive ? "text-orange-600" : "text-stone-400"
+              "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+              isActive ? "text-primary" : "text-on-surface-variant"
             )}
           >
-            <item.icon size={24} />
+            {({ isActive }) => (
+              <>
+                <span className={cn("material-symbols-outlined", isActive && "filled")}>{item.icon}</span>
+                <span className="text-[10px] font-bold uppercase">{item.name}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

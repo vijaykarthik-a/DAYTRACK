@@ -26,6 +26,7 @@ interface AuthContextType {
   loading: boolean;
   googleAccessToken: string | null;
   signIn: () => Promise<void>;
+  connectGoogleCalendar: () => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -76,9 +77,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (credential?.accessToken) {
         setGoogleAccessToken(credential.accessToken);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
+      if (error.code === 'auth/popup-closed-by-user') {
+        alert("The login popup was closed before completing. Please try again.");
+      } else if (error.code === 'auth/unauthorized-domain') {
+        alert("Domain not authorized. Please add this URL to your Firebase Console -> Authentication -> Settings -> Authorized domains.");
+      } else {
+        alert("Login failed: " + error.message);
+      }
       throw error;
+    }
+  };
+
+  const connectGoogleCalendar = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      provider.addScope('https://www.googleapis.com/auth/calendar.events');
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        setGoogleAccessToken(credential.accessToken);
+      }
+    } catch (error: any) {
+      console.error('Google Calendar connection failed:', error);
+      if (error.code === 'auth/popup-closed-by-user') {
+        alert("The popup was closed.\n\nIf you saw a 'Google hasn't verified this app' warning, you MUST click 'Advanced' at the bottom, then click 'Go to DayTrack (unsafe)' to connect your calendar.");
+      } else {
+        alert("Failed to connect to Google Calendar: " + error.message);
+      }
     }
   };
 
@@ -119,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, googleAccessToken, signIn, signUpWithEmail, signInWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, googleAccessToken, signIn, connectGoogleCalendar, signUpWithEmail, signInWithEmail, logout }}>
       {children}
     </AuthContext.Provider>
   );

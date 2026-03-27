@@ -20,7 +20,7 @@ import { CalendarEvent } from '../types';
 import { format } from 'date-fns';
 
 const Calendar: React.FC = () => {
-  const { user, googleAccessToken } = useAuth();
+  const { user, googleAccessToken, connectGoogleCalendar } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [googleEvents, setGoogleEvents] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -133,28 +133,39 @@ const Calendar: React.FC = () => {
     <div className="space-y-8 pb-24 md:pb-0 h-full flex flex-col">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-          <p className="text-stone-500">Plan your schedule and set reminders.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-on-surface">Calendar</h1>
+          <p className="text-on-surface-variant">Plan your schedule and set reminders.</p>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-2xl font-black transition-all shadow-lg shadow-orange-100 uppercase tracking-widest text-xs"
-        >
-          <Plus size={20} />
-          Add Event
-        </button>
+        <div className="flex items-center gap-3">
+          {!googleAccessToken && (
+            <button 
+              onClick={connectGoogleCalendar}
+              className="flex items-center justify-center gap-2 bg-surface-container-lowest border border-outline-variant/20 hover:bg-surface-container text-on-surface px-6 py-3 rounded-2xl font-black transition-all shadow-sm uppercase tracking-widest text-xs"
+            >
+              <CalendarIcon size={20} className="text-secondary" />
+              Connect Google
+            </button>
+          )}
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center justify-center gap-2 bg-primary hover:opacity-90 text-on-primary px-6 py-3 rounded-2xl font-black transition-all shadow-lg shadow-primary/20 uppercase tracking-widest text-xs"
+          >
+            <Plus size={20} />
+            Add Event
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 bg-white p-6 rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden">
+      <div className="flex-1 bg-surface-container-lowest p-6 rounded-[2.5rem] border border-outline-variant/20 shadow-sm overflow-hidden">
         <style>{`
-          .fc { font-family: inherit; --fc-border-color: #f1f5f9; --fc-today-bg-color: #fff7ed; }
-          .fc .fc-toolbar-title { font-size: 1.25rem; font-weight: 800; color: #1c1917; text-transform: uppercase; letter-spacing: -0.02em; }
-          .fc .fc-button-primary { background-color: #f8fafc; border-color: #e2e8f0; color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; padding: 0.6rem 1.2rem; border-radius: 0.75rem; }
-          .fc .fc-button-primary:hover { background-color: #f1f5f9; border-color: #cbd5e1; color: #1e293b; }
-          .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: #ea580c; border-color: #ea580c; color: white; }
-          .fc .fc-col-header-cell-cushion { padding: 1rem; color: #94a3b8; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; }
-          .fc .fc-daygrid-day-number { padding: 0.75rem; font-weight: 700; color: #64748b; }
-          .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #f1f5f9; }
+          .fc { font-family: inherit; --fc-border-color: var(--outline-variant); --fc-today-bg-color: var(--primary-container); opacity: 0.9; }
+          .fc .fc-toolbar-title { font-size: 1.25rem; font-weight: 800; color: var(--on-surface); text-transform: uppercase; letter-spacing: -0.02em; }
+          .fc .fc-button-primary { background-color: var(--surface-container-low); border-color: var(--outline-variant); color: var(--on-surface-variant); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; padding: 0.6rem 1.2rem; border-radius: 0.75rem; }
+          .fc .fc-button-primary:hover { background-color: var(--surface-container); border-color: var(--outline); color: var(--on-surface); }
+          .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+          .fc .fc-col-header-cell-cushion { padding: 1rem; color: var(--on-surface-variant); font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; }
+          .fc .fc-daygrid-day-number { padding: 0.75rem; font-weight: 700; color: var(--on-surface-variant); }
+          .fc-theme-standard td, .fc-theme-standard th { border: 1px solid var(--outline-variant); opacity: 0.3; }
           .fc .fc-event { border-radius: 0.5rem; padding: 4px 8px; font-size: 0.7rem; font-weight: 800; border: none; text-transform: uppercase; letter-spacing: 0.02em; }
         `}</style>
         
@@ -181,8 +192,8 @@ const Calendar: React.FC = () => {
 
       {/* View Event Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-inverse-surface/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-surface-container-lowest w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div 
@@ -190,23 +201,23 @@ const Calendar: React.FC = () => {
                   style={{ backgroundColor: selectedEvent.color }}
                 />
                 <div>
-                  <h2 className="text-2xl font-black text-stone-900">{selectedEvent.title}</h2>
-                  <p className="text-stone-500 font-bold text-sm mt-1">
+                  <h2 className="text-2xl font-black text-on-surface">{selectedEvent.title}</h2>
+                  <p className="text-on-surface-variant font-bold text-sm mt-1">
                     {format(selectedEvent.startTime.toDate(), 'MMM d, yyyy')}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedEvent(null)} className="p-2 text-stone-400 hover:bg-stone-100 rounded-full transition-colors">
+              <button onClick={() => setSelectedEvent(null)} className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
             
             <div className="space-y-6 mb-8">
-              <div className="flex items-center gap-4 p-4 bg-stone-50 rounded-2xl">
-                <Clock className="text-stone-400" size={24} />
+              <div className="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+                <Clock className="text-on-surface-variant" size={24} />
                 <div>
-                  <p className="text-xs font-bold text-stone-400 uppercase tracking-wider">Time</p>
-                  <p className="font-black text-stone-900">
+                  <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Time</p>
+                  <p className="font-black text-on-surface">
                     {format(selectedEvent.startTime.toDate(), 'h:mm a')} - {format(selectedEvent.endTime.toDate(), 'h:mm a')}
                   </p>
                 </div>
@@ -219,7 +230,7 @@ const Calendar: React.FC = () => {
                   href={selectedEvent.htmlLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 py-4 rounded-2xl font-black transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 bg-primary-container/30 hover:bg-primary-container/50 text-primary py-4 rounded-2xl font-black transition-all"
                 >
                   <CalendarIcon size={20} />
                   View in Google Calendar
@@ -230,7 +241,7 @@ const Calendar: React.FC = () => {
                     handleDeleteEvent(selectedEvent.id);
                     setSelectedEvent(null);
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 py-4 rounded-2xl font-black transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 bg-error-container hover:bg-error-container/80 text-on-error-container py-4 rounded-2xl font-black transition-all"
                 >
                   <Trash2 size={20} />
                   Delete Event
@@ -243,28 +254,28 @@ const Calendar: React.FC = () => {
 
       {/* Add Event Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-inverse-surface/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-surface-container-lowest w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold">New Event</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-stone-400 hover:bg-stone-100 rounded-full">
+              <h2 className="text-2xl font-bold text-on-surface">New Event</h2>
+              <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full">
                 <X size={20} />
               </button>
             </div>
             
             <form onSubmit={handleAddEvent} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-stone-500 uppercase tracking-wider">Event Title</label>
+                <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Event Title</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <CalendarIcon className="text-stone-400" size={20} />
+                    <CalendarIcon className="text-on-surface-variant" size={20} />
                   </div>
                   <input 
                     autoFocus
                     type="text" 
                     required
                     placeholder="What's happening?" 
-                    className="w-full pl-12 pr-6 py-4 bg-stone-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 transition-all text-lg font-bold"
+                    className="w-full pl-12 pr-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary transition-all text-lg font-bold text-on-surface placeholder:text-on-surface-variant"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                   />
@@ -273,30 +284,30 @@ const Calendar: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-stone-500 uppercase tracking-wider">Start Time</label>
+                  <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Start Time</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Clock className="text-stone-400" size={16} />
+                      <Clock className="text-on-surface-variant" size={16} />
                     </div>
                     <input 
                       type="datetime-local" 
                       required
-                      className="w-full pl-10 pr-4 py-4 bg-stone-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 transition-all font-bold text-sm"
+                      className="w-full pl-10 pr-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary transition-all font-bold text-sm text-on-surface"
                       value={newStart}
                       onChange={(e) => setNewStart(e.target.value)}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-stone-500 uppercase tracking-wider">End Time</label>
+                  <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">End Time</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Clock className="text-stone-400" size={16} />
+                      <Clock className="text-on-surface-variant" size={16} />
                     </div>
                     <input 
                       type="datetime-local" 
                       required
-                      className="w-full pl-10 pr-4 py-4 bg-stone-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 transition-all font-bold text-sm"
+                      className="w-full pl-10 pr-4 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary transition-all font-bold text-sm text-on-surface"
                       value={newEnd}
                       onChange={(e) => setNewEnd(e.target.value)}
                     />
@@ -305,14 +316,14 @@ const Calendar: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-stone-500 uppercase tracking-wider">Label Color</label>
+                <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Label Color</label>
                 <div className="flex gap-3">
                   {['#ea580c', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map(color => (
                     <button
                       key={color}
                       type="button"
                       onClick={() => setNewColor(color)}
-                      className={`w-10 h-10 rounded-full transition-all ${newColor === color ? 'ring-4 ring-stone-100 scale-110' : 'hover:scale-105'}`}
+                      className={`w-10 h-10 rounded-full transition-all ${newColor === color ? 'ring-4 ring-outline-variant scale-110' : 'hover:scale-105'}`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -321,7 +332,7 @@ const Calendar: React.FC = () => {
 
               <button 
                 type="submit"
-                className="w-full bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-2xl font-black text-lg shadow-lg shadow-orange-100 transition-all mt-4 uppercase tracking-widest"
+                className="w-full bg-primary hover:opacity-90 text-on-primary py-4 rounded-2xl font-black text-lg shadow-lg shadow-primary/20 transition-all mt-4 uppercase tracking-widest"
               >
                 Create Event
               </button>

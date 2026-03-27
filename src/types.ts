@@ -58,3 +58,20 @@ export interface RoutineLog {
   done: boolean;
   userId: string;
 }
+
+export interface StudySubject {
+  id: string;
+  title: string;
+  color: string;
+  userId: string;
+}
+
+export interface StudyNote {
+  id: string;
+  subjectId: string;
+  title: string;
+  content: string;
+  userId: string;
+  createdAt: any; // Timestamp
+  updatedAt: any; // Timestamp
+}

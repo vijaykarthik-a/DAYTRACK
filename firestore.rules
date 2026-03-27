@@ -63,6 +63,37 @@ service cloud.firestore {
     //   - done: bool (required)
     //   - userId: string (required, matches owner)
     //
+    // Collection: tracker_habits
+    // Document ID: habitId
+    // Fields:
+    //   - title: string (required, < 100 chars)
+    //   - color: string (required)
+    //   - userId: string (required, matches owner)
+    //
+    // Collection: tracker_logs
+    // Document ID: logId
+    // Fields:
+    //   - habitId: string (required)
+    //   - date: string (required, format YYYY-MM-DD)
+    //   - userId: string (required, matches owner)
+    //
+    // Collection: study_subjects
+    // Document ID: subjectId
+    // Fields:
+    //   - title: string (required, < 100 chars)
+    //   - color: string (required)
+    //   - userId: string (required, matches owner)
+    //
+    // Collection: study_notes
+    // Document ID: noteId
+    // Fields:
+    //   - subjectId: string (required)
+    //   - title: string (required, < 200 chars)
+    //   - content: string (required)
+    //   - userId: string (required, matches owner)
+    //   - createdAt: timestamp (required)
+    //   - updatedAt: timestamp (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -157,6 +188,33 @@ service cloud.firestore {
              data.userId == request.auth.uid;
     }
 
+    function isValidTrackerHabit(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.color is string &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidTrackerLog(data) {
+      return data.habitId is string &&
+             data.date is string &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidStudySubject(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.color is string &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidStudyNote(data) {
+      return data.subjectId is string &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.content is string &&
+             data.userId == request.auth.uid &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -199,6 +257,34 @@ service cloud.firestore {
       allow read: if isDocOwner() || isAdmin();
       allow create: if isRequestOwner() && isValidRoutineLog(request.resource.data);
       allow update: if isDocOwner() && isRequestOwner() && isValidRoutineLog(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /tracker_habits/{habitId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidTrackerHabit(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidTrackerHabit(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /tracker_logs/{logId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidTrackerLog(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidTrackerLog(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /study_subjects/{subjectId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidStudySubject(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidStudySubject(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /study_notes/{noteId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidStudyNote(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidStudyNote(request.resource.data);
       allow delete: if isDocOwner() || isAdmin();
     }
 
