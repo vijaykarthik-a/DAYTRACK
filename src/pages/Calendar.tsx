@@ -142,11 +142,6 @@ const Calendar: React.FC = () => {
     .slice(0, 5);
 
   const handleGetInsights = async () => {
-    if (!process.env.GEMINI_API_KEY) {
-      alert("Gemini API key is not configured.");
-      return;
-    }
-    
     setIsInsightsModalOpen(true);
     setInsightsLoading(true);
     setInsightsText('');

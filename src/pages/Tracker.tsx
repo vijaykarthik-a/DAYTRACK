@@ -128,11 +128,6 @@ const Tracker: React.FC = () => {
   const pastDays = Array.from({ length: 14 }).map((_, i) => subDays(today, 13 - i));
 
   const handleGetInsights = async () => {
-    if (!process.env.GEMINI_API_KEY) {
-      alert("Gemini API key is not configured.");
-      return;
-    }
-    
     setIsInsightsModalOpen(true);
     setInsightsLoading(true);
     setInsightsText('');
