@@ -103,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error('Google Calendar connection failed:', error);
       if (error.code === 'auth/popup-closed-by-user') {
-        alert("The popup was closed.\n\nIf you saw a 'Google hasn't verified this app' warning, you MUST click 'Advanced' at the bottom, then click 'Go to Daily Tracking (unsafe)' to connect your calendar.");
+        alert("The popup was closed.\n\nIf you saw a 'Google hasn't verified this app' warning, you MUST click 'Advanced' at the bottom, then click 'Go to DailyFlow (unsafe)' to connect your calendar.");
       } else {
         alert("Failed to connect to Google Calendar: " + error.message);
       }

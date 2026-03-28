@@ -39,8 +39,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="flex items-center gap-3">
             <Logo className="w-10 h-10 text-on-surface" />
             <div className="flex flex-col">
-              <span className="text-xl font-black text-on-surface tracking-tighter font-headline leading-none">DAILY</span>
-              <span className="text-xl font-medium text-on-surface-variant tracking-tighter font-headline leading-none">TRACKING</span>
+              <span className="text-xl font-black text-on-surface tracking-tighter font-headline leading-none">DailyFlow</span>
+              <span className="text-[10px] font-bold text-on-surface-variant tracking-widest uppercase mt-1">In Sync With Your Day</span>
             </div>
           </div>
           <button onClick={toggleTheme} className="p-2 text-on-surface-variant hover:text-on-surface transition-colors rounded-full hover:bg-surface-container">
@@ -100,8 +100,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <div className="flex items-center gap-2">
           <Logo className="w-8 h-8 text-on-surface" />
           <div className="flex flex-col">
-            <span className="text-lg font-black text-on-surface tracking-tighter font-headline leading-none">DAILY</span>
-            <span className="text-lg font-medium text-on-surface-variant tracking-tighter font-headline leading-none">TRACKING</span>
+            <span className="text-lg font-black text-on-surface tracking-tighter font-headline leading-none">DailyFlow</span>
           </div>
         </div>
         <div className="flex items-center gap-2">

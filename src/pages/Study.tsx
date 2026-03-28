@@ -181,7 +181,7 @@ const Study: React.FC = () => {
         },
         body: JSON.stringify({
           summary: `Study: ${scheduleTitle}`,
-          description: `Study session scheduled via Daily Tracking.`,
+          description: `Study session scheduled via DailyFlow.`,
           start: { dateTime: new Date(scheduleStart).toISOString() },
           end: { dateTime: new Date(scheduleEnd).toISOString() },
         })

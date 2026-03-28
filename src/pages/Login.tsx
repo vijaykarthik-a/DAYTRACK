@@ -55,10 +55,9 @@ const Login: React.FC = () => {
             <Logo className="w-16 h-16" />
           </div>
           <div className="flex flex-col items-center justify-center">
-            <h1 className="text-4xl font-black tracking-tighter text-on-background leading-none">DAILY</h1>
-            <h1 className="text-4xl font-medium tracking-tighter text-on-surface-variant leading-none">TRACKING</h1>
+            <h1 className="text-4xl font-black tracking-tighter text-on-background leading-none">DailyFlow</h1>
           </div>
-          <p className="text-on-surface-variant font-bold text-sm uppercase tracking-widest mt-4">Personal Productivity Hub</p>
+          <p className="text-on-surface-variant font-bold text-sm uppercase tracking-widest mt-4">In Sync With Your Day</p>
         </div>
 
         <div className="bg-surface-container-lowest rounded-[3rem] p-10 shadow-sm border border-outline-variant/20">
