@@ -20,6 +20,8 @@ import { Task } from '../types';
 import { format } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -76,6 +78,16 @@ const Tasks: React.FC = () => {
 
   const toggleTaskStatus = async (task: Task) => {
     const newStatus = task.status === 'done' ? 'todo' : 'done';
+    
+    if (newStatus === 'done') {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#4ade80', '#22c55e', '#16a34a', '#15803d']
+      });
+    }
+
     const taskRef = doc(db, 'tasks', task.id);
     
     // Optimistic UI
@@ -166,70 +178,99 @@ const Tasks: React.FC = () => {
 
       {/* Tasks List */}
       <div className="grid grid-cols-1 gap-4">
-        {filteredTasks.length > 0 ? (
-          filteredTasks.map(task => (
-            <div 
-              key={task.id} 
-              className={cn(
-                "group bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/20 shadow-sm flex items-center gap-4 transition-all hover:shadow-md",
-                task.status === 'done' && "opacity-60"
-              )}
-            >
-              <button 
-                onClick={() => toggleTaskStatus(task)}
-                className="text-outline-variant hover:text-primary transition-colors"
-              >
-                {task.status === 'done' ? (
-                  <CheckCircle2 size={28} className="text-primary" />
-                ) : (
-                  <Circle size={28} />
+        <AnimatePresence mode="popLayout">
+          {filteredTasks.length > 0 ? (
+            filteredTasks.map(task => (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+                key={task.id} 
+                className={cn(
+                  "group bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/20 shadow-sm flex items-center gap-4 transition-all hover:shadow-md",
+                  task.status === 'done' && "opacity-60 scale-[0.98]"
                 )}
-              </button>
-              
-              <div className="flex-1 min-w-0">
-                <h3 className={cn(
-                  "font-bold text-lg truncate text-on-surface",
-                  task.status === 'done' && "line-through text-on-surface-variant"
-                )}>
-                  {task.title}
-                </h3>
-                <div className="flex items-center gap-4 mt-1">
-                  <span className={cn("text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
-                    {task.priority}
-                  </span>
-                  {task.dueDate && (
-                    <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                      <Clock size={12} />
-                      {format(task.dueDate.toDate(), 'MMM d, h:mm a')}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              >
                 <button 
-                  onClick={() => deleteTask(task.id)}
-                  className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-xl transition-all"
+                  onClick={() => toggleTaskStatus(task)}
+                  className="text-outline-variant hover:text-primary transition-colors relative"
                 >
-                  <Trash2 size={18} />
+                  <AnimatePresence mode="wait">
+                    {task.status === 'done' ? (
+                      <motion.div
+                        key="done"
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: 90 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                        <CheckCircle2 size={28} className="text-primary" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="todo"
+                        initial={{ scale: 0, rotate: 90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: -90 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      >
+                        <Circle size={28} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="text-center py-20 bg-surface-container-lowest rounded-[2.5rem] border border-dashed border-outline-variant/30">
-            <div className="w-16 h-16 bg-surface-container-low text-on-surface-variant rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckSquare size={32} />
-            </div>
-            <p className="text-on-surface-variant font-medium">No tasks found matching your filters.</p>
-            <button 
-              onClick={() => setIsAddModalOpen(true)}
-              className="mt-4 text-primary font-black uppercase tracking-widest text-xs hover:underline"
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className={cn(
+                    "font-bold text-lg truncate text-on-surface transition-all duration-300",
+                    task.status === 'done' && "line-through text-on-surface-variant"
+                  )}>
+                    {task.title}
+                  </h3>
+                  <div className="flex items-center gap-4 mt-1">
+                    <span className={cn("text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
+                      {task.priority}
+                    </span>
+                    {task.dueDate && (
+                      <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                        <Clock size={12} />
+                        {format(task.dueDate.toDate(), 'MMM d, h:mm a')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => deleteTask(task.id)}
+                    className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-xl transition-all"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center py-20 bg-surface-container-lowest rounded-[2.5rem] border border-dashed border-outline-variant/30"
             >
-              Create your first task
-            </button>
-          </div>
-        )}
+              <div className="w-16 h-16 bg-surface-container-low text-on-surface-variant rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckSquare size={32} />
+              </div>
+              <p className="text-on-surface-variant font-medium">No tasks found matching your filters.</p>
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="mt-4 text-primary font-black uppercase tracking-widest text-xs hover:underline"
+              >
+                Create your first task
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Add Task Modal */}
