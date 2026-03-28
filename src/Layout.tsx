@@ -155,13 +155,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface-container-lowest/90 backdrop-blur-xl border-t border-outline-variant/20 px-2 py-3 flex justify-around items-center z-50 transition-colors duration-500">
-        {navItems.slice(0, 5).map((item) => (
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface-container-lowest/90 backdrop-blur-xl border-t border-outline-variant/20 px-2 py-3 flex overflow-x-auto hide-scrollbar gap-2 z-50 transition-colors duration-500">
+        {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+              "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors min-w-[64px] flex-shrink-0",
               isActive ? "text-primary" : "text-on-surface-variant"
             )}
           >

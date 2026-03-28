@@ -166,12 +166,12 @@ const Tracker: React.FC = () => {
 
   return (
     <div className="space-y-10 pb-24 md:pb-10 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-on-surface">Daily Tracker</h1>
           <p className="text-on-surface-variant font-bold text-xs uppercase tracking-widest mt-1">Build Consistency</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button 
             onClick={handleGetInsights}
             className="flex items-center gap-2 bg-secondary-container hover:bg-secondary-container/80 text-on-secondary-container px-6 py-3 rounded-2xl font-black transition-all shadow-sm uppercase tracking-widest text-xs"

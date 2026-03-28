@@ -122,14 +122,14 @@ const Routines: React.FC = () => {
 
   return (
     <div className="space-y-10 pb-24 md:pb-10 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-on-surface">Reminders</h1>
           <p className="text-on-surface-variant font-bold text-xs uppercase tracking-widest mt-1">Mindful Alerts</p>
         </div>
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 bg-primary hover:opacity-90 text-on-primary px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-primary/20"
+          className="flex items-center justify-center gap-2 bg-primary hover:opacity-90 text-on-primary px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-primary/20"
         >
           <Plus size={20} />
           Add
@@ -144,18 +144,18 @@ const Routines: React.FC = () => {
         <div className="space-y-4">
           {activeRoutinesForDay.map(routine => (
             <div key={routine.id} className="bg-surface-container-lowest p-6 rounded-[2rem] border border-outline-variant/20 shadow-sm flex items-center justify-between group">
-              <div className="flex items-center gap-6">
-                <div className="w-14 h-14 bg-primary-container/30 text-primary rounded-full flex items-center justify-center">
-                  <Bell size={28} />
+              <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
+                <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 bg-primary-container/30 text-primary rounded-full flex items-center justify-center">
+                  <Bell size={24} className="md:w-7 md:h-7" />
                 </div>
-                <div>
-                  <p className="text-2xl font-mono font-black text-on-surface leading-none mb-1">{routine.timeOfDay}</p>
-                  <p className="text-sm font-medium text-on-surface-variant">{routine.title}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xl md:text-2xl font-mono font-black text-on-surface leading-none mb-1 truncate">{routine.timeOfDay}</p>
+                  <p className="text-xs md:text-sm font-medium text-on-surface-variant truncate">{routine.title}</p>
                 </div>
               </div>
               <button 
                 onClick={() => deleteRoutine(routine.id)}
-                className="p-3 text-outline-variant hover:text-error opacity-0 group-hover:opacity-100 transition-all"
+                className="p-3 text-outline-variant hover:text-error opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0"
               >
                 <Trash2 size={20} />
               </button>
@@ -175,14 +175,14 @@ const Routines: React.FC = () => {
           {routines.map(routine => {
             const isDone = routineLogs.some(l => l.routineId === routine.id && l.logDate === format(new Date(), 'yyyy-MM-dd') && l.done);
             return (
-              <div key={routine.id} className="bg-surface-container-lowest p-6 rounded-[2rem] border border-outline-variant/20 shadow-sm flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <div className="w-14 h-14 bg-surface-container-low text-on-surface-variant rounded-2xl flex items-center justify-center">
-                    <Repeat size={28} />
+              <div key={routine.id} className="bg-surface-container-lowest p-6 rounded-[2rem] border border-outline-variant/20 shadow-sm flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
+                  <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 bg-surface-container-low text-on-surface-variant rounded-2xl flex items-center justify-center">
+                    <Repeat size={24} className="md:w-7 md:h-7" />
                   </div>
-                  <div>
-                    <p className="text-lg font-black text-on-surface leading-none mb-1">{routine.title}</p>
-                    <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base md:text-lg font-black text-on-surface leading-none mb-1 truncate">{routine.title}</p>
+                    <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest truncate">
                       {routine.daysOfWeek.length === 7 ? 'Every Day' : routine.daysOfWeek.map(d => daysLabels[d]).join(', ')}
                     </p>
                   </div>
@@ -190,7 +190,7 @@ const Routines: React.FC = () => {
                 <button 
                   onClick={() => toggleRoutineLog(routine.id)}
                   className={cn(
-                    "w-14 h-8 rounded-full p-1 transition-all duration-300 flex items-center",
+                    "w-14 h-8 rounded-full p-1 transition-all duration-300 flex items-center shrink-0",
                     isDone ? "bg-primary justify-end" : "bg-surface-container-highest justify-start"
                   )}
                 >

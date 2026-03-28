@@ -26,6 +26,7 @@ const Focus: React.FC = () => {
   const [showMusic, setShowMusic] = useState(false);
   const [isMusicMuted, setIsMusicMuted] = useState(false);
   const [customMinutes, setCustomMinutes] = useState(25);
+  const [totalTime, setTotalTime] = useState(25 * 60);
   const [currentStation, setCurrentStation] = useState(STATIONS[0]);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,6 +44,7 @@ const Focus: React.FC = () => {
         setTimeLeft(nextTime);
         
         if (nextTime === 0) {
+          if (timerRef.current) clearInterval(timerRef.current);
           handleTimerComplete();
         }
       }, 100);
@@ -73,20 +75,26 @@ const Focus: React.FC = () => {
     if (mode === 'pomodoro') {
       setMode('break');
       setTimeLeft(5 * 60);
+      setTotalTime(5 * 60);
     } else if (mode === 'break') {
       setMode('pomodoro');
       setTimeLeft(25 * 60);
+      setTotalTime(25 * 60);
     }
     
     const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3');
-    audio.play();
+    audio.play().catch(console.error);
   };
 
   const startFocus = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
+    try {
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      }
+    } catch (err) {
+      console.error('Fullscreen API not supported', err);
     }
     setIsActive(true);
   };
@@ -101,16 +109,33 @@ const Focus: React.FC = () => {
 
   const resetTimer = () => {
     setIsActive(false);
-    if (mode === 'pomodoro') setTimeLeft(25 * 60);
-    else if (mode === 'break') setTimeLeft(5 * 60);
-    else setTimeLeft(customMinutes * 60);
+    if (mode === 'pomodoro') { setTimeLeft(25 * 60); setTotalTime(25 * 60); }
+    else if (mode === 'break') { setTimeLeft(5 * 60); setTotalTime(5 * 60); }
+    else { setTimeLeft(customMinutes * 60); setTotalTime(customMinutes * 60); }
+  };
+
+  const addTime = (minutes: number) => {
+    const secondsToAdd = minutes * 60;
+    setTimeLeft(prev => prev + secondsToAdd);
+    setTotalTime(prev => prev + secondsToAdd);
+    if (isActive) {
+      initialTimeRef.current += secondsToAdd;
+    }
   };
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(console.error);
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(console.error);
+        }
+      }
+    } catch (err) {
+      console.error('Fullscreen API not supported', err);
     }
   };
 
@@ -126,7 +151,6 @@ const Focus: React.FC = () => {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const totalTime = mode === 'pomodoro' ? 25 * 60 : mode === 'break' ? 5 * 60 : customMinutes * 60;
   const progress = (timeLeft / totalTime) * 100;
 
   return (
@@ -293,7 +317,7 @@ const Focus: React.FC = () => {
 
                 <div className="grid grid-cols-1 gap-2">
                   <button 
-                    onClick={() => { setMode('pomodoro'); setTimeLeft(25 * 60); setIsActive(false); }}
+                    onClick={() => { setMode('pomodoro'); setTimeLeft(25 * 60); setTotalTime(25 * 60); setIsActive(false); }}
                     className={cn(
                       "flex items-center justify-between p-3 rounded-lg font-bold text-sm transition-colors",
                       mode === 'pomodoro' ? "bg-primary-container/40 text-on-primary border border-primary/20" : "bg-surface-container-low text-on-surface-variant font-medium border border-outline-variant/5 hover:bg-surface-container-high"
@@ -303,7 +327,7 @@ const Focus: React.FC = () => {
                     <span className="text-xs opacity-70">25m</span>
                   </button>
                   <button 
-                    onClick={() => { setMode('break'); setTimeLeft(5 * 60); setIsActive(false); }}
+                    onClick={() => { setMode('break'); setTimeLeft(5 * 60); setTotalTime(5 * 60); setIsActive(false); }}
                     className={cn(
                       "flex items-center justify-between p-3 rounded-lg font-bold text-sm transition-colors",
                       mode === 'break' ? "bg-primary-container/40 text-on-primary border border-primary/20" : "bg-surface-container-low text-on-surface-variant font-medium border border-outline-variant/5 hover:bg-surface-container-high"
@@ -324,6 +348,7 @@ const Focus: React.FC = () => {
                           const val = parseInt(e.target.value) || 25;
                           setCustomMinutes(val);
                           setTimeLeft(val * 60);
+                          setTotalTime(val * 60);
                         }}
                         className="w-16 text-center bg-transparent border-b border-primary/50 focus:outline-none focus:border-primary font-bold"
                       />
@@ -331,7 +356,7 @@ const Focus: React.FC = () => {
                     </div>
                   ) : (
                     <button 
-                      onClick={() => { setMode('custom'); setTimeLeft(customMinutes * 60); setIsActive(false); }}
+                      onClick={() => { setMode('custom'); setTimeLeft(customMinutes * 60); setTotalTime(customMinutes * 60); setIsActive(false); }}
                       className="mt-2 flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-outline-variant/30 text-on-surface-variant font-medium text-sm hover:border-primary/50 hover:text-primary transition-colors"
                     >
                       <span className="material-symbols-outlined text-sm">add</span>
@@ -352,8 +377,11 @@ const Focus: React.FC = () => {
                   <p className="text-sm font-medium leading-snug">
                     "You usually hit your peak focus at 11:30 AM. Ready to extend this block by 10 minutes?"
                   </p>
-                  <button className="mt-4 w-full py-2 bg-tertiary text-on-tertiary-fixed font-black rounded-lg text-xs transition-transform active:scale-95">
-                    Accept Suggestion
+                  <button 
+                    onClick={() => addTime(10)}
+                    className="mt-4 w-full py-2 bg-tertiary text-on-tertiary-fixed font-black rounded-lg text-xs transition-transform active:scale-95"
+                  >
+                    Accept Suggestion (+10m)
                   </button>
                 </div>
               </div>
@@ -364,8 +392,8 @@ const Focus: React.FC = () => {
 
       {/* Floating Music Player */}
       <div className={cn(
-        "fixed bottom-10 right-10 transition-all duration-500 z-[210]",
-        showMusic ? "w-80 h-[26rem]" : "w-16 h-16"
+        "fixed bottom-24 md:bottom-10 right-4 md:right-10 transition-all duration-500 z-[210]",
+        showMusic ? "w-[calc(100vw-2rem)] md:w-80 h-[26rem]" : "w-16 h-16"
       )}>
         {showMusic ? (
           <div className="bg-surface-container-lowest rounded-[2.5rem] shadow-2xl border border-outline-variant/20 overflow-hidden flex flex-col h-full animate-in zoom-in slide-in-from-bottom-10">

@@ -302,13 +302,13 @@ const Study: React.FC = () => {
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
 
   return (
-    <div className="h-[calc(100vh-8rem)] md:h-[calc(100vh-5rem)] flex flex-col">
-      <div className="flex items-center justify-between mb-6 shrink-0">
+    <div className="md:h-[calc(100vh-5rem)] flex flex-col pb-24 md:pb-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-on-surface">Study Hub</h1>
           <p className="text-on-surface-variant">Manage subjects, take notes, and chat with your AI tutor.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {!googleAccessToken && (
             <button 
               onClick={connectGoogleCalendar}
@@ -328,9 +328,9 @@ const Study: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex gap-6 min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0">
         {/* Subjects Sidebar */}
-        <div className="w-64 bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm p-4 flex flex-col shrink-0 overflow-y-auto">
+        <div className="w-full md:w-64 bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm p-4 flex flex-col shrink-0 overflow-y-auto max-h-[30vh] md:max-h-none">
           <h2 className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-4 px-2">Subjects</h2>
           <div className="space-y-2">
             {subjects.map(subject => (
@@ -368,15 +368,15 @@ const Study: React.FC = () => {
 
         {/* Main Content Area */}
         {selectedSubjectId ? (
-          <div className="flex-1 flex gap-6 min-w-0">
+          <div className="flex-1 flex flex-col xl:flex-row gap-6 min-w-0">
             {/* Notes Section */}
-            <div className="flex-1 flex flex-col bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
+            <div className="flex-1 flex flex-col bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden min-h-[50vh]">
+              <div className="p-4 border-b border-outline-variant/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-low/50">
                 <div className="flex items-center gap-2">
                   <BookOpen size={18} className="text-primary" />
                   <h2 className="font-bold text-on-surface">Notes</h2>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={() => setIsScheduleModalOpen(true)}
                     className="flex items-center gap-2 text-xs font-bold bg-surface-container-lowest border border-outline-variant/20 text-on-surface-variant px-3 py-1.5 rounded-lg hover:bg-surface-container-low transition-colors"
@@ -392,9 +392,9 @@ const Study: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex-1 flex min-h-0">
+              <div className="flex-1 flex flex-col sm:flex-row min-h-0">
                 {/* Notes List */}
-                <div className="w-1/3 border-r border-outline-variant/20 overflow-y-auto p-2 space-y-1">
+                <div className="w-full sm:w-1/3 border-b sm:border-b-0 sm:border-r border-outline-variant/20 overflow-y-auto p-2 space-y-1 max-h-[30vh] sm:max-h-none">
                   {notes.map(note => (
                     <div 
                       key={note.id}
@@ -462,7 +462,7 @@ const Study: React.FC = () => {
             </div>
 
             {/* AI Assistant Chat */}
-            <div className="w-80 flex flex-col bg-surface-container-highest rounded-[2rem] shadow-xl overflow-hidden shrink-0">
+            <div className="w-full xl:w-80 flex flex-col bg-surface-container-highest rounded-[2rem] shadow-xl overflow-hidden shrink-0 min-h-[50vh]">
               <div className="p-4 border-b border-outline-variant/20 bg-surface-container-lowest flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary-container/30 flex items-center justify-center">
                   <MessageSquare size={16} className="text-primary" />

@@ -181,7 +181,7 @@ const Calendar: React.FC = () => {
           <h1 className="text-3xl font-bold tracking-tight text-on-surface">Calendar</h1>
           <p className="text-on-surface-variant">Plan your schedule and set reminders.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {!googleAccessToken && (
             <button 
               onClick={connectGoogleCalendar}
@@ -201,7 +201,7 @@ const Calendar: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-6">
         <div className="flex-1 bg-surface-container-lowest p-6 rounded-[2.5rem] border border-outline-variant/20 shadow-sm overflow-hidden flex flex-col">
           <style>{`
             .fc { font-family: inherit; --fc-border-color: var(--outline-variant); --fc-today-bg-color: var(--primary-container); height: 100%; }
@@ -213,9 +213,15 @@ const Calendar: React.FC = () => {
             .fc .fc-daygrid-day-number { padding: 0.75rem; font-weight: 700; color: var(--on-surface); }
             .fc-theme-standard td, .fc-theme-standard th { border: 1px solid var(--outline-variant); }
             .fc .fc-event { border-radius: 0.5rem; padding: 4px 8px; font-size: 0.7rem; font-weight: 800; border: none; text-transform: uppercase; letter-spacing: 0.02em; }
+            @media (max-width: 768px) {
+              .fc .fc-toolbar { flex-direction: column; gap: 1rem; }
+              .fc .fc-toolbar-title { font-size: 1.1rem; }
+              .fc .fc-button-primary { padding: 0.4rem 0.8rem; font-size: 0.6rem; }
+              .fc .fc-toolbar-chunk { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; }
+            }
           `}</style>
           
-          <div className="flex-1 min-h-[500px]">
+          <div className="flex-1">
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -226,7 +232,7 @@ const Calendar: React.FC = () => {
                 right: 'dayGridMonth,timeGridWeek,timeGridDay'
               }}
               events={calendarEvents}
-              height="100%"
+              height="auto"
               editable={true}
               selectable={true}
               selectMirror={true}
