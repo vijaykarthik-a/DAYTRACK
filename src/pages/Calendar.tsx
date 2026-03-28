@@ -17,7 +17,9 @@ import {
 } from 'lucide-react';
 import { db, collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp, handleFirestoreError, OperationType } from '../firebase';
 import { CalendarEvent } from '../types';
-import { format } from 'date-fns';
+import { format, isAfter, startOfDay } from 'date-fns';
+import { GoogleGenAI } from '@google/genai';
+import Markdown from 'react-markdown';
 
 const Calendar: React.FC = () => {
   const { user, googleAccessToken, connectGoogleCalendar } = useAuth();
@@ -32,6 +34,11 @@ const Calendar: React.FC = () => {
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
   const [newColor, setNewColor] = useState('#ea580c'); // Orange 600
+
+  // AI Insights state
+  const [isInsightsModalOpen, setIsInsightsModalOpen] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsText, setInsightsText] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -129,6 +136,49 @@ const Calendar: React.FC = () => {
     }))
   ];
 
+  const upcomingEvents = calendarEvents
+    .filter(e => isAfter(new Date(e.start), startOfDay(new Date())))
+    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
+    .slice(0, 5);
+
+  const handleGetInsights = async () => {
+    if (!process.env.GEMINI_API_KEY) {
+      alert("Gemini API key is not configured.");
+      return;
+    }
+    
+    setIsInsightsModalOpen(true);
+    setInsightsLoading(true);
+    setInsightsText('');
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      let dataSummary = "User's Upcoming Schedule:\n\n";
+      upcomingEvents.forEach(event => {
+        dataSummary += `- ${event.title} on ${format(new Date(event.start), 'MMM d, h:mm a')}\n`;
+      });
+
+      if (upcomingEvents.length === 0) {
+        dataSummary += "No upcoming events scheduled.";
+      }
+
+      const prompt = `Analyze the following upcoming schedule and provide a short, friendly summary with 1-2 actionable tips for time management or preparation. Keep it concise.\n\n${dataSummary}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+      });
+
+      setInsightsText(response.text || "No insights generated.");
+    } catch (error) {
+      console.error("AI Insights Error:", error);
+      setInsightsText("Failed to generate insights. Please try again later.");
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-24 md:pb-0 h-full flex flex-col">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -156,38 +206,83 @@ const Calendar: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 bg-surface-container-lowest p-6 rounded-[2.5rem] border border-outline-variant/20 shadow-sm overflow-hidden">
-        <style>{`
-          .fc { font-family: inherit; --fc-border-color: var(--outline-variant); --fc-today-bg-color: var(--primary-container); opacity: 0.9; }
-          .fc .fc-toolbar-title { font-size: 1.25rem; font-weight: 800; color: var(--on-surface); text-transform: uppercase; letter-spacing: -0.02em; }
-          .fc .fc-button-primary { background-color: var(--surface-container-low); border-color: var(--outline-variant); color: var(--on-surface-variant); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; padding: 0.6rem 1.2rem; border-radius: 0.75rem; }
-          .fc .fc-button-primary:hover { background-color: var(--surface-container); border-color: var(--outline); color: var(--on-surface); }
-          .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: var(--primary); border-color: var(--primary); color: var(--on-primary); }
-          .fc .fc-col-header-cell-cushion { padding: 1rem; color: var(--on-surface-variant); font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; }
-          .fc .fc-daygrid-day-number { padding: 0.75rem; font-weight: 700; color: var(--on-surface-variant); }
-          .fc-theme-standard td, .fc-theme-standard th { border: 1px solid var(--outline-variant); opacity: 0.3; }
-          .fc .fc-event { border-radius: 0.5rem; padding: 4px 8px; font-size: 0.7rem; font-weight: 800; border: none; text-transform: uppercase; letter-spacing: 0.02em; }
-        `}</style>
-        
-        <FullCalendar
-          ref={calendarRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-          }}
-          events={calendarEvents}
-          height="auto"
-          editable={true}
-          selectable={true}
-          selectMirror={true}
-          dayMaxEvents={true}
-          eventClick={(info) => {
-            setSelectedEvent(info.event.extendedProps as CalendarEvent);
-          }}
-        />
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+        <div className="flex-1 bg-surface-container-lowest p-6 rounded-[2.5rem] border border-outline-variant/20 shadow-sm overflow-hidden flex flex-col">
+          <style>{`
+            .fc { font-family: inherit; --fc-border-color: var(--outline-variant); --fc-today-bg-color: var(--primary-container); height: 100%; }
+            .fc .fc-toolbar-title { font-size: 1.25rem; font-weight: 800; color: var(--on-surface); text-transform: uppercase; letter-spacing: -0.02em; }
+            .fc .fc-button-primary { background-color: var(--surface-container-low); border-color: var(--outline-variant); color: var(--on-surface-variant); font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; padding: 0.6rem 1.2rem; border-radius: 0.75rem; }
+            .fc .fc-button-primary:hover { background-color: var(--surface-container); border-color: var(--outline); color: var(--on-surface); }
+            .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+            .fc .fc-col-header-cell-cushion { padding: 1rem; color: var(--on-surface); font-weight: 800; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; }
+            .fc .fc-daygrid-day-number { padding: 0.75rem; font-weight: 700; color: var(--on-surface); }
+            .fc-theme-standard td, .fc-theme-standard th { border: 1px solid var(--outline-variant); }
+            .fc .fc-event { border-radius: 0.5rem; padding: 4px 8px; font-size: 0.7rem; font-weight: 800; border: none; text-transform: uppercase; letter-spacing: 0.02em; }
+          `}</style>
+          
+          <div className="flex-1 min-h-[500px]">
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+              initialView="dayGridMonth"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+              }}
+              events={calendarEvents}
+              height="100%"
+              editable={true}
+              selectable={true}
+              selectMirror={true}
+              dayMaxEvents={true}
+              eventClick={(info) => {
+                setSelectedEvent(info.event.extendedProps as CalendarEvent);
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Side Panel */}
+        <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0">
+          <div className="bg-surface-container-lowest p-6 rounded-[2.5rem] border border-outline-variant/20 shadow-sm flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-black text-on-surface uppercase tracking-widest">Upcoming</h2>
+              <button 
+                onClick={handleGetInsights}
+                className="p-2 bg-secondary-container text-on-secondary-container rounded-xl hover:bg-secondary-container/80 transition-colors"
+                title="AI Schedule Insights"
+              >
+                <CalendarIcon size={18} />
+              </button>
+            </div>
+            
+            <div className="space-y-4 flex-1 overflow-y-auto pr-2 dark-scrollbar">
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map(event => (
+                  <div 
+                    key={event.id} 
+                    className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/10 cursor-pointer hover:bg-surface-container transition-colors"
+                    onClick={() => setSelectedEvent(event.extendedProps as CalendarEvent)}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: event.backgroundColor }} />
+                      <h3 className="font-bold text-on-surface text-sm truncate">{event.title}</h3>
+                    </div>
+                    <p className="text-xs text-on-surface-variant font-medium flex items-center gap-1.5">
+                      <Clock size={12} />
+                      {format(new Date(event.start), 'MMM d, h:mm a')}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-on-surface-variant text-sm">No upcoming events.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* View Event Modal */}
@@ -337,6 +432,41 @@ const Calendar: React.FC = () => {
                 Create Event
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* AI Insights Modal */}
+      {isInsightsModalOpen && (
+        <div className="fixed inset-0 bg-inverse-surface/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-surface-container-lowest w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-on-surface flex items-center gap-2">
+                <CalendarIcon className="text-primary" /> Schedule Insights
+              </h2>
+              <button onClick={() => setIsInsightsModalOpen(false)} className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="min-h-[150px] max-h-[400px] overflow-y-auto pr-2 dark-scrollbar">
+              {insightsLoading ? (
+                <div className="flex flex-col items-center justify-center h-full space-y-4 py-8">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-on-surface-variant font-medium animate-pulse">Analyzing your schedule...</p>
+                </div>
+              ) : (
+                <div className="text-on-surface leading-relaxed">
+                  <Markdown className="markdown-body text-sm">{insightsText}</Markdown>
+                </div>
+              )}
+            </div>
+
+            <button 
+              onClick={() => setIsInsightsModalOpen(false)}
+              className="w-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface py-4 rounded-2xl font-black text-lg transition-all mt-6 uppercase tracking-widest"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

@@ -12,6 +12,8 @@ import { db, collection, query, where, onSnapshot, addDoc, deleteDoc, doc, setDo
 import { format, subDays, eachDayOfInterval, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { GoogleGenAI } from '@google/genai';
+import Markdown from 'react-markdown';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -40,6 +42,11 @@ const Tracker: React.FC = () => {
   // Form state
   const [newTitle, setNewTitle] = useState('');
   const [newColor, setNewColor] = useState('bg-orange-500');
+
+  // AI Insights state
+  const [isInsightsModalOpen, setIsInsightsModalOpen] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsText, setInsightsText] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -120,6 +127,48 @@ const Tracker: React.FC = () => {
   const today = new Date();
   const pastDays = Array.from({ length: 14 }).map((_, i) => subDays(today, 13 - i));
 
+  const handleGetInsights = async () => {
+    if (!process.env.GEMINI_API_KEY) {
+      alert("Gemini API key is not configured.");
+      return;
+    }
+    
+    setIsInsightsModalOpen(true);
+    setInsightsLoading(true);
+    setInsightsText('');
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      // Prepare data for AI
+      let dataSummary = "User's Habits and Last 14 Days Logs:\n\n";
+      habits.forEach(habit => {
+        dataSummary += `Habit: ${habit.title}\n`;
+        let completionCount = 0;
+        pastDays.forEach(day => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const isDone = logs.some(l => l.habitId === habit.id && l.date === dateStr);
+          if (isDone) completionCount++;
+        });
+        dataSummary += `- Completed ${completionCount} out of 14 days.\n`;
+      });
+
+      const prompt = `Analyze the following habit tracking data and provide a short, encouraging summary with 1-2 actionable insights or tips for improvement. Keep it concise and friendly.\n\n${dataSummary}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+      });
+
+      setInsightsText(response.text || "No insights generated.");
+    } catch (error) {
+      console.error("AI Insights Error:", error);
+      setInsightsText("Failed to generate insights. Please try again later.");
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-10 pb-24 md:pb-10 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
@@ -127,13 +176,22 @@ const Tracker: React.FC = () => {
           <h1 className="text-4xl font-black tracking-tight text-on-surface">Daily Tracker</h1>
           <p className="text-on-surface-variant font-bold text-xs uppercase tracking-widest mt-1">Build Consistency</p>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-3 rounded-2xl font-black transition-all shadow-lg shadow-primary/20 uppercase tracking-widest text-xs"
-        >
-          <Plus size={20} />
-          Add Tracker
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={handleGetInsights}
+            className="flex items-center gap-2 bg-secondary-container hover:bg-secondary-container/80 text-on-secondary-container px-6 py-3 rounded-2xl font-black transition-all shadow-sm uppercase tracking-widest text-xs"
+          >
+            <Activity size={20} />
+            AI Insights
+          </button>
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-on-primary px-6 py-3 rounded-2xl font-black transition-all shadow-lg shadow-primary/20 uppercase tracking-widest text-xs"
+          >
+            <Plus size={20} />
+            Add Tracker
+          </button>
+        </div>
       </div>
 
       <div className="bg-surface-container-lowest p-8 rounded-[2.5rem] border border-outline-variant/20 shadow-sm overflow-x-auto">
@@ -257,6 +315,41 @@ const Tracker: React.FC = () => {
                 Create Tracker
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* AI Insights Modal */}
+      {isInsightsModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-surface-container-lowest w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-on-surface flex items-center gap-2">
+                <Activity className="text-primary" /> AI Insights
+              </h2>
+              <button onClick={() => setIsInsightsModalOpen(false)} className="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="min-h-[150px] max-h-[400px] overflow-y-auto pr-2 dark-scrollbar">
+              {insightsLoading ? (
+                <div className="flex flex-col items-center justify-center h-full space-y-4 py-8">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-on-surface-variant font-medium animate-pulse">Analyzing your habits...</p>
+                </div>
+              ) : (
+                <div className="text-on-surface leading-relaxed">
+                  <Markdown className="markdown-body text-sm">{insightsText}</Markdown>
+                </div>
+              )}
+            </div>
+
+            <button 
+              onClick={() => setIsInsightsModalOpen(false)}
+              className="w-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface py-4 rounded-2xl font-black text-lg transition-all mt-6 uppercase tracking-widest"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

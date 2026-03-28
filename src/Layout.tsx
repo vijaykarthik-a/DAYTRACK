@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { Logo } from './components/Logo';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,9 +36,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-surface-container-lowest border-r border-outline-variant/20 h-screen fixed left-0 top-0 p-4 overflow-y-auto z-50 dark-scrollbar transition-colors duration-500">
         <div className="mb-8 px-2 flex items-center justify-between">
-          <div>
-            <span className="text-2xl font-black text-primary italic tracking-tighter font-headline">DayTrack</span>
-            <p className="font-headline font-bold text-sm tracking-tight text-outline uppercase mt-1">Editorial Productivity</p>
+          <div className="flex items-center gap-3">
+            <Logo className="w-10 h-10 text-on-surface" />
+            <div className="flex flex-col">
+              <span className="text-xl font-black text-on-surface tracking-tighter font-headline leading-none">DAILY</span>
+              <span className="text-xl font-medium text-on-surface-variant tracking-tighter font-headline leading-none">TRACKING</span>
+            </div>
           </div>
           <button onClick={toggleTheme} className="p-2 text-on-surface-variant hover:text-on-surface transition-colors rounded-full hover:bg-surface-container">
             <span className="material-symbols-outlined">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
@@ -93,7 +97,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* Mobile Header */}
       <header className="md:hidden bg-surface-container-lowest border-b border-outline-variant/20 p-4 flex items-center justify-between sticky top-0 z-50 transition-colors duration-500">
-        <h1 className="text-xl font-black tracking-tighter text-primary font-headline italic">DayTrack</h1>
+        <div className="flex items-center gap-2">
+          <Logo className="w-8 h-8 text-on-surface" />
+          <div className="flex flex-col">
+            <span className="text-lg font-black text-on-surface tracking-tighter font-headline leading-none">DAILY</span>
+            <span className="text-lg font-medium text-on-surface-variant tracking-tighter font-headline leading-none">TRACKING</span>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <button onClick={toggleTheme} className="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
             <span className="material-symbols-outlined">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>

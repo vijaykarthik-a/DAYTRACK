@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { Navigate } from 'react-router-dom';
 import { LogIn, UserPlus, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
+import { Logo } from '../components/Logo';
 
 const Login: React.FC = () => {
   const { user, signIn, signUpWithEmail, signInWithEmail, loading: authLoading } = useAuth();
@@ -50,11 +51,14 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="max-w-md w-full">
         <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-primary rounded-[2.5rem] flex items-center justify-center text-on-primary mx-auto mb-6 shadow-xl shadow-primary/20">
-            <LogIn size={40} />
+          <div className="w-24 h-24 bg-surface-container-lowest rounded-[2.5rem] flex items-center justify-center text-on-surface mx-auto mb-6 shadow-xl shadow-outline-variant/10 border border-outline-variant/20">
+            <Logo className="w-16 h-16" />
           </div>
-          <h1 className="text-4xl font-black tracking-tighter text-on-background">DayTrack</h1>
-          <p className="text-on-surface-variant font-bold text-sm uppercase tracking-widest mt-2">Personal Productivity Hub</p>
+          <div className="flex flex-col items-center justify-center">
+            <h1 className="text-4xl font-black tracking-tighter text-on-background leading-none">DAILY</h1>
+            <h1 className="text-4xl font-medium tracking-tighter text-on-surface-variant leading-none">TRACKING</h1>
+          </div>
+          <p className="text-on-surface-variant font-bold text-sm uppercase tracking-widest mt-4">Personal Productivity Hub</p>
         </div>
 
         <div className="bg-surface-container-lowest rounded-[3rem] p-10 shadow-sm border border-outline-variant/20">

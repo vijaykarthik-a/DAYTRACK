@@ -16,6 +16,7 @@ import { StudySubject, StudyNote } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GoogleGenAI } from '@google/genai';
+import Markdown from 'react-markdown';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -180,7 +181,7 @@ const Study: React.FC = () => {
         },
         body: JSON.stringify({
           summary: `Study: ${scheduleTitle}`,
-          description: `Study session scheduled via DayTrack.`,
+          description: `Study session scheduled via Daily Tracking.`,
           start: { dateTime: new Date(scheduleStart).toISOString() },
           end: { dateTime: new Date(scheduleEnd).toISOString() },
         })
@@ -203,7 +204,7 @@ const Study: React.FC = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentMessage.trim() || !process.env.GEMINI_API_KEY) return;
+    if (!currentMessage.trim()) return;
 
     const userMsg = currentMessage;
     setCurrentMessage('');
@@ -214,6 +215,70 @@ const Study: React.FC = () => {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       // Gather all notes for context
+      const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
+      const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: userMsg,
+        config: {
+          systemInstruction: systemInstruction,
+        }
+      });
+
+      setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
+    } catch (error) {
+      console.error("AI Error:", error);
+      setChatMessages(prev => [...prev, { role: 'ai', text: 'Error connecting to AI assistant.' }]);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleGenerateQuiz = async () => {
+    if (!selectedSubjectId || notes.length === 0) {
+      alert("Please add some notes to this subject first.");
+      return;
+    }
+    
+    const userMsg = "Generate a short quiz (3-5 questions) based on my notes to test my knowledge.";
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsAiLoading(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
+      const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: userMsg,
+        config: {
+          systemInstruction: systemInstruction,
+        }
+      });
+
+      setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
+    } catch (error) {
+      console.error("AI Error:", error);
+      setChatMessages(prev => [...prev, { role: 'ai', text: 'Error connecting to AI assistant.' }]);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!selectedSubjectId || notes.length === 0) {
+      alert("Please add some notes to this subject first.");
+      return;
+    }
+    
+    const userMsg = "Summarize the key concepts from my notes in bullet points.";
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsAiLoading(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
@@ -407,6 +472,24 @@ const Study: React.FC = () => {
                   <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">NotebookLM Clone</p>
                 </div>
               </div>
+
+              {/* Quick Actions */}
+              <div className="px-4 pt-4 pb-2 flex gap-2 overflow-x-auto dark-scrollbar shrink-0">
+                <button 
+                  onClick={handleSummarize}
+                  disabled={isAiLoading}
+                  className="shrink-0 text-xs font-bold bg-surface-container-low hover:bg-surface-container text-on-surface px-3 py-1.5 rounded-lg transition-colors border border-outline-variant/20 disabled:opacity-50"
+                >
+                  Summarize Notes
+                </button>
+                <button 
+                  onClick={handleGenerateQuiz}
+                  disabled={isAiLoading}
+                  className="shrink-0 text-xs font-bold bg-surface-container-low hover:bg-surface-container text-on-surface px-3 py-1.5 rounded-lg transition-colors border border-outline-variant/20 disabled:opacity-50"
+                >
+                  Generate Quiz
+                </button>
+              </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {chatMessages.length === 0 && (
@@ -421,7 +504,13 @@ const Study: React.FC = () => {
                       ? "bg-primary text-on-primary ml-auto rounded-tr-sm" 
                       : "bg-surface-container text-on-surface mr-auto rounded-tl-sm"
                   )}>
-                    {msg.text}
+                    {msg.role === 'ai' ? (
+                      <div className="markdown-body text-sm">
+                        <Markdown>{msg.text}</Markdown>
+                      </div>
+                    ) : (
+                      msg.text
+                    )}
                   </div>
                 ))}
                 {isAiLoading && (
@@ -443,7 +532,7 @@ const Study: React.FC = () => {
                   />
                   <button 
                     type="submit"
-                    disabled={!currentMessage.trim() || isAiLoading || !process.env.GEMINI_API_KEY}
+                    disabled={!currentMessage.trim() || isAiLoading}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
                   >
                     <Send size={16} />
