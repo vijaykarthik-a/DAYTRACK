@@ -166,9 +166,9 @@ const Calendar: React.FC = () => {
       });
 
       setInsightsText(response.text || "No insights generated.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Insights Error:", error);
-      setInsightsText("Failed to generate insights. Please try again later.");
+      setInsightsText(`Failed to generate insights: ${error.message || 'Unknown error'}`);
     } finally {
       setInsightsLoading(false);
     }

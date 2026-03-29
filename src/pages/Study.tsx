@@ -227,9 +227,9 @@ const Study: React.FC = () => {
       });
 
       setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
-      setChatMessages(prev => [...prev, { role: 'ai', text: 'Error connecting to AI assistant.' }]);
+      setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
     } finally {
       setIsAiLoading(false);
     }
@@ -259,9 +259,9 @@ const Study: React.FC = () => {
       });
 
       setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
-      setChatMessages(prev => [...prev, { role: 'ai', text: 'Error connecting to AI assistant.' }]);
+      setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
     } finally {
       setIsAiLoading(false);
     }
@@ -291,9 +291,9 @@ const Study: React.FC = () => {
       });
 
       setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
-      setChatMessages(prev => [...prev, { role: 'ai', text: 'Error connecting to AI assistant.' }]);
+      setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
     } finally {
       setIsAiLoading(false);
     }

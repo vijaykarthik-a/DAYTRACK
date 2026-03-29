@@ -103,9 +103,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       console.error('Google Calendar connection failed:', error);
       if (error.code === 'auth/popup-closed-by-user') {
-        alert("The popup was closed.\n\nIf you saw a 'Google hasn't verified this app' warning, you MUST click 'Advanced' at the bottom, then click 'Go to DailyFlow (unsafe)' to connect your calendar.");
+        alert("The popup was closed.\n\nIf you saw a 'Google hasn't verified this app' warning, you MUST click 'Advanced' at the bottom, then click 'Go to DailyFlow (unsafe)' to connect your calendar.\n\nNOTE FOR MOBILE USERS: If the popup doesn't appear at all, your browser might be blocking it. Please try opening this app in a new tab or use a desktop browser.");
+      } else if (error.code === 'auth/popup-blocked') {
+        alert("The login popup was blocked by your browser.\n\nNOTE FOR MOBILE USERS: Please tap the 'Open in new tab' button at the top of the screen, or check your browser settings to allow popups for this site.");
       } else {
-        alert("Failed to connect to Google Calendar: " + error.message);
+        alert("Failed to connect to Google Calendar: " + error.message + "\n\nIf you are on mobile, try opening the app in a new tab.");
       }
     }
   };
