@@ -133,7 +133,7 @@ const Tracker: React.FC = () => {
     setInsightsText('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyB5QiiZEMrwfze-ShJa3Vly5hOWpgsCxak' });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       // Prepare data for AI
       let dataSummary = "User's Habits and Last 14 Days Logs:\n\n";

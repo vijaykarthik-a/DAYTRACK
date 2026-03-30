@@ -147,7 +147,7 @@ const Calendar: React.FC = () => {
     setInsightsText('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyB5QiiZEMrwfze-ShJa3Vly5hOWpgsCxak' });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       let dataSummary = "User's Upcoming Schedule:\n\n";
       upcomingEvents.forEach(event => {
