@@ -212,7 +212,7 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyB5QiiZEMrwfze-ShJa3Vly5hOWpgsCxak' });
       
       // Gather all notes for context
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
@@ -246,7 +246,7 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyB5QiiZEMrwfze-ShJa3Vly5hOWpgsCxak' });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
@@ -278,7 +278,7 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'AIzaSyB5QiiZEMrwfze-ShJa3Vly5hOWpgsCxak' });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
