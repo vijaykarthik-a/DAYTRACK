@@ -30,6 +30,7 @@ interface AuthContextType {
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -148,8 +149,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfileData = async (data: Partial<UserProfile>) => {
+    if (!user || !profile) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid), data, { merge: true });
+      setProfile({ ...profile, ...data });
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, googleAccessToken, signIn, connectGoogleCalendar, signUpWithEmail, signInWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, googleAccessToken, signIn, connectGoogleCalendar, signUpWithEmail, signInWithEmail, logout, updateProfileData }}>
       {children}
     </AuthContext.Provider>
   );

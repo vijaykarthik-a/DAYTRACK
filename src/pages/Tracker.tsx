@@ -334,7 +334,9 @@ const Tracker: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-on-surface leading-relaxed">
-                  <Markdown className="markdown-body text-sm">{insightsText}</Markdown>
+                  <div className="markdown-body text-sm">
+                    <Markdown>{insightsText}</Markdown>
+                  </div>
                 </div>
               )}
             </div>

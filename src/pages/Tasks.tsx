@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { db, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp, handleFirestoreError, OperationType } from '../firebase';
 import { Task } from '../types';
-import { format } from 'date-fns';
+import { format, isToday, isThisWeek, isThisMonth } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,6 +33,7 @@ const Tasks: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [filterDate, setFilterDate] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Form state
@@ -62,6 +63,7 @@ const Tasks: React.FC = () => {
       priority: newPriority,
       status: 'todo',
       userId: user.uid,
+      createdAt: Timestamp.now(),
       dueDate: newDueDate ? Timestamp.fromDate(new Date(newDueDate)) : undefined,
     };
 
@@ -111,11 +113,85 @@ const Tasks: React.FC = () => {
     }
   };
 
+  const [expandedTasks, setExpandedTasks] = useState<string[]>([]);
+  const [newSubtaskTitles, setNewSubtaskTitles] = useState<Record<string, string>>({});
+
+  const toggleTaskExpansion = (id: string) => {
+    setExpandedTasks(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+  };
+
+  const handleAddSubtask = async (e: React.FormEvent, taskId: string) => {
+    e.preventDefault();
+    const title = newSubtaskTitles[taskId]?.trim();
+    if (!title) return;
+
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newSubtask = {
+      id: crypto.randomUUID(),
+      title,
+      completed: false
+    };
+
+    const updatedSubtasks = [...(task.subtasks || []), newSubtask];
+
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubtasks });
+      setNewSubtaskTitles(prev => ({ ...prev, [taskId]: '' }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `tasks/${taskId}`);
+    }
+  };
+
+  const toggleSubtaskStatus = async (taskId: string, subtaskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.subtasks) return;
+
+    const updatedSubtasks = task.subtasks.map(st => 
+      st.id === subtaskId ? { ...st, completed: !st.completed } : st
+    );
+
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubtasks });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `tasks/${taskId}`);
+    }
+  };
+
+  const deleteSubtask = async (taskId: string, subtaskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.subtasks) return;
+
+    const updatedSubtasks = task.subtasks.filter(st => st.id !== subtaskId);
+
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubtasks });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `tasks/${taskId}`);
+    }
+  };
+
   const filteredTasks = tasks.filter(t => {
     const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
     const matchesPriority = filterPriority === 'all' || t.priority === filterPriority;
     const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesPriority && matchesSearch;
+    
+    let matchesDate = true;
+    if (filterDate !== 'all') {
+      const [type, range] = filterDate.split('_');
+      const targetDate = type === 'created' ? t.createdAt?.toDate() : t.completedAt?.toDate();
+      
+      if (!targetDate) {
+        matchesDate = false;
+      } else {
+        if (range === 'today') matchesDate = isToday(targetDate);
+        if (range === 'week') matchesDate = isThisWeek(targetDate);
+        if (range === 'month') matchesDate = isThisMonth(targetDate);
+      }
+    }
+
+    return matchesStatus && matchesPriority && matchesSearch && matchesDate;
   });
 
   const priorityColors = {
@@ -152,7 +228,7 @@ const Tasks: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select 
             className="bg-surface-container-low border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary text-on-surface"
             value={filterStatus}
@@ -173,6 +249,19 @@ const Tasks: React.FC = () => {
             <option value="medium">Medium</option>
             <option value="high">High</option>
           </select>
+          <select 
+            className="bg-surface-container-low border-none rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary text-on-surface"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+          >
+            <option value="all">All Dates</option>
+            <option value="created_today">Created Today</option>
+            <option value="created_week">Created This Week</option>
+            <option value="created_month">Created This Month</option>
+            <option value="completed_today">Completed Today</option>
+            <option value="completed_week">Completed This Week</option>
+            <option value="completed_month">Completed This Month</option>
+          </select>
         </div>
       </div>
 
@@ -188,67 +277,131 @@ const Tasks: React.FC = () => {
                 exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
                 key={task.id} 
                 className={cn(
-                  "group bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/20 shadow-sm flex items-center gap-4 transition-all hover:shadow-md",
+                  "group bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/20 shadow-sm flex flex-col gap-4 transition-all hover:shadow-md",
                   task.status === 'done' && "opacity-60 scale-[0.98]"
                 )}
               >
-                <button 
-                  onClick={() => toggleTaskStatus(task)}
-                  className="text-outline-variant hover:text-primary transition-colors relative"
-                >
-                  <AnimatePresence mode="wait">
-                    {task.status === 'done' ? (
-                      <motion.div
-                        key="done"
-                        initial={{ scale: 0, rotate: -90 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        exit={{ scale: 0, rotate: 90 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      >
-                        <CheckCircle2 size={28} className="text-primary" />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="todo"
-                        initial={{ scale: 0, rotate: 90 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        exit={{ scale: 0, rotate: -90 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      >
-                        <Circle size={28} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </button>
-                
-                <div className="flex-1 min-w-0">
-                  <h3 className={cn(
-                    "font-bold text-lg truncate text-on-surface transition-all duration-300",
-                    task.status === 'done' && "line-through text-on-surface-variant"
-                  )}>
-                    {task.title}
-                  </h3>
-                  <div className="flex items-center gap-4 mt-1">
-                    <span className={cn("text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
-                      {task.priority}
-                    </span>
-                    {task.dueDate && (
-                      <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                        <Clock size={12} />
-                        {format(task.dueDate.toDate(), 'MMM d, h:mm a')}
+                <div className="flex items-center gap-4 w-full">
+                  <button 
+                    onClick={() => toggleTaskStatus(task)}
+                    className="text-outline-variant hover:text-primary transition-colors relative shrink-0"
+                  >
+                    <AnimatePresence mode="wait">
+                      {task.status === 'done' ? (
+                        <motion.div
+                          key="done"
+                          initial={{ scale: 0, rotate: -90 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          exit={{ scale: 0, rotate: 90 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        >
+                          <CheckCircle2 size={28} className="text-primary" />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="todo"
+                          initial={{ scale: 0, rotate: 90 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          exit={{ scale: 0, rotate: -90 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        >
+                          <Circle size={28} />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                  
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleTaskExpansion(task.id)}>
+                    <h3 className={cn(
+                      "font-bold text-lg truncate text-on-surface transition-all duration-300",
+                      task.status === 'done' && "line-through text-on-surface-variant"
+                    )}>
+                      {task.title}
+                    </h3>
+                    <div className="flex items-center gap-4 mt-1">
+                      <span className={cn("text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full", priorityColors[task.priority])}>
+                        {task.priority}
                       </span>
-                    )}
+                      {task.dueDate && (
+                        <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                          <Clock size={12} />
+                          {format(task.dueDate.toDate(), 'MMM d, h:mm a')}
+                        </span>
+                      )}
+                      {task.subtasks && task.subtasks.length > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-on-surface-variant font-medium">
+                          <CheckSquare size={12} />
+                          {task.subtasks.filter(st => st.completed).length}/{task.subtasks.length}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button 
+                      onClick={() => toggleTaskExpansion(task.id)}
+                      className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary-container/10 rounded-xl transition-all"
+                    >
+                      <ChevronDown size={18} className={cn("transition-transform", expandedTasks.includes(task.id) && "rotate-180")} />
+                    </button>
+                    <button 
+                      onClick={() => deleteTask(task.id)}
+                      className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-xl transition-all"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => deleteTask(task.id)}
-                    className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-xl transition-all"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                {/* Subtasks Section */}
+                <AnimatePresence>
+                  {expandedTasks.includes(task.id) && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden w-full"
+                    >
+                      <div className="pl-11 pr-2 pb-2 space-y-3 pt-2 border-t border-outline-variant/10">
+                        {task.subtasks?.map(subtask => (
+                          <div key={subtask.id} className="flex items-center gap-3 group/subtask">
+                            <button 
+                              onClick={() => toggleSubtaskStatus(task.id, subtask.id)}
+                              className="text-outline-variant hover:text-primary transition-colors"
+                            >
+                              {subtask.completed ? <CheckCircle2 size={20} className="text-primary" /> : <Circle size={20} />}
+                            </button>
+                            <span className={cn(
+                              "flex-1 text-sm font-medium transition-all",
+                              subtask.completed ? "line-through text-on-surface-variant" : "text-on-surface"
+                            )}>
+                              {subtask.title}
+                            </span>
+                            <button 
+                              onClick={() => deleteSubtask(task.id, subtask.id)}
+                              className="opacity-0 group-hover/subtask:opacity-100 p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-lg transition-all"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        
+                        <form onSubmit={(e) => handleAddSubtask(e, task.id)} className="flex items-center gap-3 mt-2">
+                          <div className="w-5 flex justify-center text-outline-variant/50">
+                            <Plus size={16} />
+                          </div>
+                          <input 
+                            type="text"
+                            placeholder="Add a subtask..."
+                            value={newSubtaskTitles[task.id] || ''}
+                            onChange={(e) => setNewSubtaskTitles(prev => ({ ...prev, [task.id]: e.target.value }))}
+                            className="flex-1 bg-transparent border-none text-sm focus:ring-0 p-0 text-on-surface placeholder:text-on-surface-variant/50 font-medium"
+                          />
+                        </form>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             ))
           ) : (

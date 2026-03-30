@@ -128,6 +128,18 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["subjectId", "title", "content", "userId", "createdAt", "updatedAt"]
+    },
+    "DietLog": {
+      "title": "Diet Log",
+      "description": "A log of food consumed and its calories.",
+      "type": "object",
+      "properties": {
+        "food": { "type": "string" },
+        "calories": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["food", "calories", "date", "userId"]
     }
   },
   "firestore": {
@@ -140,6 +152,7 @@
     "tracker_habits/{habitId}": { "schema": "TrackerHabit", "description": "Tracker habits collection" },
     "tracker_logs/{logId}": { "schema": "TrackerLog", "description": "Tracker logs collection" },
     "study_subjects/{subjectId}": { "schema": "StudySubject", "description": "Study subjects collection" },
-    "study_notes/{noteId}": { "schema": "StudyNote", "description": "Study notes collection" }
+    "study_notes/{noteId}": { "schema": "StudyNote", "description": "Study notes collection" },
+    "diet_logs/{logId}": { "schema": "DietLog", "description": "Diet logs collection" }
   }
 }

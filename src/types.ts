@@ -6,6 +6,13 @@ export interface UserProfile {
   avatarUrl?: string;
   timezone?: string;
   createdAt: Timestamp;
+  enabledModules?: string[];
+}
+
+export interface Subtask {
+  id: string;
+  title: string;
+  completed: boolean;
 }
 
 export interface Task {
@@ -14,8 +21,9 @@ export interface Task {
   dueDate?: Timestamp;
   priority: 'low' | 'medium' | 'high';
   status: 'todo' | 'in_progress' | 'done';
+  createdAt?: Timestamp;
   completedAt?: Timestamp;
-  subtasks?: string[];
+  subtasks?: Subtask[];
   userId: string;
 }
 
@@ -29,6 +37,7 @@ export interface CalendarEvent {
   userId: string;
   isGoogle?: boolean;
   htmlLink?: string;
+  googleEventId?: string;
 }
 
 export interface FocusSession {

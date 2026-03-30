@@ -12,7 +12,8 @@ import {
   Zap,
   ChevronRight,
   TrendingUp,
-  Star
+  Star,
+  Flame
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { db, collection, query, where, onSnapshot, Timestamp } from '../firebase';
@@ -31,6 +32,7 @@ const Dashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [routineLogs, setRoutineLogs] = useState<RoutineLog[]>([]);
+  const [todayCalories, setTodayCalories] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -59,6 +61,11 @@ const Dashboard: React.FC = () => {
       where('logDate', '==', today)
     );
 
+    const dietQuery = query(
+      collection(db, 'diet_logs'),
+      where('userId', '==', user.uid)
+    );
+
     const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
       setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
     });
@@ -71,10 +78,23 @@ const Dashboard: React.FC = () => {
       setRoutineLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RoutineLog)));
     });
 
+    const unsubDiet = onSnapshot(dietQuery, (snapshot) => {
+      let cals = 0;
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const date = data.date.toDate();
+        if (format(date, 'yyyy-MM-dd') === today) {
+          cals += data.calories;
+        }
+      });
+      setTodayCalories(cals);
+    });
+
     return () => {
       unsubTasks();
       unsubRoutines();
       unsubLogs();
+      unsubDiet();
     };
   }, [user]);
 
@@ -94,6 +114,12 @@ const Dashboard: React.FC = () => {
   const routineProgress = todayRoutines.length > 0 ? (completedRoutines / todayRoutines.length) * 100 : 0;
 
   const nextTask = todayTasks.find(t => t.status === 'todo');
+
+  const enabledModules = profile?.enabledModules || [];
+  const hasTasks = enabledModules.includes('tasks');
+  const hasRoutines = enabledModules.includes('routines');
+  const hasFocus = enabledModules.includes('focus');
+  const hasDiet = enabledModules.includes('diet');
 
   return (
     <div className="space-y-10 pb-20 md:pb-10">
@@ -124,6 +150,7 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-8 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Task Progress Card */}
+            {hasTasks && (
             <div className="bg-surface-container-highest rounded-3xl p-8 text-on-surface shadow-md relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
                 <CheckSquare size={120} />
@@ -151,8 +178,10 @@ const Dashboard: React.FC = () => {
                 </p>
               </div>
             </div>
+            )}
 
             {/* Routine Progress Card */}
+            {hasRoutines && (
             <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/20 shadow-sm relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
                 <Repeat size={120} />
@@ -178,9 +207,11 @@ const Dashboard: React.FC = () => {
                 </p>
               </div>
             </div>
+            )}
           </div>
 
           {/* Next Objective Card */}
+          {hasTasks && (
           <div className="bg-primary-container/20 rounded-3xl p-8 border border-primary/20 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center gap-5">
@@ -202,11 +233,36 @@ const Dashboard: React.FC = () => {
               </Link>
             </div>
           </div>
+          )}
         </div>
 
         {/* Right Column: Quick Actions & Focus */}
         <div className="lg:col-span-4 space-y-8">
+          {/* Diet Card */}
+          {hasDiet && (
+          <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/20 shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
+              <Flame size={120} />
+            </div>
+            <div className="relative z-10">
+              <h3 className="text-on-surface-variant font-semibold text-xs uppercase tracking-wider mb-8 flex items-center gap-2">
+                <Flame size={14} className="text-primary" />
+                Today's Calories
+              </h3>
+              <div className="flex items-end gap-4 mb-6">
+                <p className="text-6xl font-bold tracking-tight text-on-surface">
+                  {todayCalories}<span className="text-outline-variant text-3xl"> kcal</span>
+                </p>
+              </div>
+              <Link to="/diet" className="text-primary font-semibold text-sm flex items-center gap-1 hover:underline">
+                Log Meals <ChevronRight size={16} />
+              </Link>
+            </div>
+          </div>
+          )}
+
           {/* Focus Mode Card */}
+          {hasFocus && (
           <div className="bg-surface-container-highest rounded-3xl p-8 text-on-surface shadow-lg flex flex-col justify-between min-h-[280px] relative overflow-hidden">
             <div className="absolute -bottom-10 -right-10 opacity-10">
               <Timer size={200} />
@@ -225,8 +281,10 @@ const Dashboard: React.FC = () => {
               Enter Focus
             </Link>
           </div>
+          )}
 
           {/* Quick Routine List */}
+          {hasRoutines && (
           <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/20 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-on-surface font-bold flex items-center gap-2">
@@ -262,6 +320,7 @@ const Dashboard: React.FC = () => {
               )}
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

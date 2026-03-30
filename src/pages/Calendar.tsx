@@ -13,13 +13,15 @@ import {
   ChevronLeft, 
   ChevronRight,
   MoreVertical,
-  Trash2
+  Trash2,
+  Bell
 } from 'lucide-react';
-import { db, collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp, handleFirestoreError, OperationType } from '../firebase';
+import { db, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, Timestamp, handleFirestoreError, OperationType } from '../firebase';
 import { CalendarEvent } from '../types';
-import { format, isAfter, startOfDay } from 'date-fns';
+import { format, isAfter, startOfDay, differenceInMinutes, subMinutes } from 'date-fns';
 import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
+import { toast } from 'sonner';
 
 const Calendar: React.FC = () => {
   const { user, googleAccessToken, connectGoogleCalendar } = useAuth();
@@ -34,11 +36,61 @@ const Calendar: React.FC = () => {
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
   const [newColor, setNewColor] = useState('#ea580c'); // Orange 600
+  const [newReminderMin, setNewReminderMin] = useState<number | ''>('');
 
   // AI Insights state
   const [isInsightsModalOpen, setIsInsightsModalOpen] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsText, setInsightsText] = useState('');
+
+  // Notification logic
+  useEffect(() => {
+    if (!events.length) return;
+
+    const checkReminders = () => {
+      const now = new Date();
+      events.forEach(event => {
+        if (event.reminderMin && event.reminderMin > 0) {
+          const startTime = event.startTime.toDate();
+          const reminderTime = subMinutes(startTime, event.reminderMin);
+          
+          // Check if it's time to notify (within the last minute to avoid multiple triggers)
+          const diff = differenceInMinutes(now, reminderTime);
+          if (diff === 0 && isAfter(startTime, now)) {
+            // Check if we already notified for this event recently (simple check using sessionStorage)
+            const notifiedKey = `notified_${event.id}`;
+            if (!sessionStorage.getItem(notifiedKey)) {
+              toast(`Reminder: ${event.title}`, {
+                description: `Starts in ${event.reminderMin} minutes at ${format(startTime, 'h:mm a')}`,
+                icon: <Bell className="text-primary" size={20} />,
+                duration: 10000,
+              });
+              
+              // Also try browser notification if permitted
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`Reminder: ${event.title}`, {
+                  body: `Starts in ${event.reminderMin} minutes at ${format(startTime, 'h:mm a')}`,
+                  icon: '/favicon.ico' // Assuming a default favicon exists
+                });
+              }
+              
+              sessionStorage.setItem(notifiedKey, 'true');
+            }
+          }
+        }
+      });
+    };
+
+    // Request notification permission if not already granted/denied
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const intervalId = setInterval(checkReminders, 60000); // Check every minute
+    checkReminders(); // Initial check
+
+    return () => clearInterval(intervalId);
+  }, [events]);
 
   useEffect(() => {
     if (!user) return;
@@ -76,6 +128,76 @@ const Calendar: React.FC = () => {
     fetchGoogleEvents();
   }, [googleAccessToken]);
 
+  // Sync back updates from Google to local events
+  useEffect(() => {
+    const syncBack = async () => {
+      if (!googleEvents.length || !events.length) return;
+      for (const gEvent of googleEvents) {
+        const localEvent = events.find(e => e.googleEventId === gEvent.id);
+        if (localEvent) {
+          const gStart = new Date(gEvent.start?.dateTime || gEvent.start?.date).getTime();
+          const gEnd = new Date(gEvent.end?.dateTime || gEvent.end?.date).getTime();
+          const lStart = localEvent.startTime.toDate().getTime();
+          const lEnd = localEvent.endTime.toDate().getTime();
+          const gTitle = gEvent.summary || 'Untitled Event';
+          
+          if (gStart !== lStart || gEnd !== lEnd || gTitle !== localEvent.title) {
+            try {
+              await updateDoc(doc(db, 'calendar_events', localEvent.id), {
+                title: gTitle,
+                startTime: Timestamp.fromDate(new Date(gStart)),
+                endTime: Timestamp.fromDate(new Date(gEnd))
+              });
+            } catch (error) {
+              console.error("Failed to sync back from Google", error);
+            }
+          }
+        }
+      }
+    };
+    syncBack();
+  }, [googleEvents, events]);
+
+  useEffect(() => {
+    const syncLocalEventsToGoogle = async () => {
+      if (!googleAccessToken || !user || events.length === 0) return;
+      
+      const unsyncedEvents = events.filter(e => !e.googleEventId && !e.isGoogle);
+      if (unsyncedEvents.length === 0) return;
+
+      for (const event of unsyncedEvents) {
+        try {
+          const gEvent = {
+            summary: event.title,
+            start: { dateTime: event.startTime.toDate().toISOString() },
+            end: { dateTime: event.endTime.toDate().toISOString() },
+          };
+          const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${googleAccessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(gEvent)
+          });
+          if (createRes.ok) {
+            const createdGEvent = await createRes.json();
+            await updateDoc(doc(db, 'calendar_events', event.id), {
+              googleEventId: createdGEvent.id,
+              htmlLink: createdGEvent.htmlLink
+            });
+            // Also add to local googleEvents so it shows up immediately
+            setGoogleEvents(prev => [...prev, createdGEvent]);
+          }
+        } catch (error) {
+          console.error("Failed to sync event to Google Calendar", error);
+        }
+      }
+    };
+
+    syncLocalEventsToGoogle();
+  }, [googleAccessToken, user, events]);
+
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newTitle.trim() || !newStart || !newEnd) return;
@@ -86,25 +208,86 @@ const Calendar: React.FC = () => {
       endTime: Timestamp.fromDate(new Date(newEnd)),
       color: newColor,
       userId: user.uid,
+      ...(newReminderMin !== '' ? { reminderMin: Number(newReminderMin) } : {})
     };
 
     try {
-      await addDoc(collection(db, 'calendar_events'), newEvent);
+      let googleEventId = undefined;
+      let htmlLink = undefined;
+
+      if (googleAccessToken) {
+        const gEvent = {
+          summary: newTitle,
+          start: { dateTime: new Date(newStart).toISOString() },
+          end: { dateTime: new Date(newEnd).toISOString() },
+        };
+        const createRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${googleAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(gEvent)
+        });
+        if (createRes.ok) {
+          const createdGEvent = await createRes.json();
+          googleEventId = createdGEvent.id;
+          htmlLink = createdGEvent.htmlLink;
+          
+          // Add to local googleEvents so it shows up immediately without refetching
+          setGoogleEvents(prev => [...prev, createdGEvent]);
+        }
+      }
+
+      await addDoc(collection(db, 'calendar_events'), {
+        ...newEvent,
+        ...(googleEventId ? { googleEventId, htmlLink } : {})
+      });
+      
       setIsAddModalOpen(false);
       setNewTitle('');
       setNewStart('');
       setNewEnd('');
+      setNewReminderMin('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'calendar_events');
     }
   };
 
-  const handleDeleteEvent = async (id: string) => {
+  const handleDeleteEvent = async (id: string, isGoogle?: boolean, googleEventId?: string) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return;
     try {
-      await deleteDoc(doc(db, 'calendar_events', id));
+      if (isGoogle && googleAccessToken) {
+        // Delete directly from Google Calendar
+        await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${googleAccessToken}`
+          }
+        });
+        setGoogleEvents(prev => prev.filter(e => e.id !== id));
+      } else {
+        // Delete from Firestore
+        await deleteDoc(doc(db, 'calendar_events', id));
+        
+        // Delete from Google Calendar if linked
+        if (googleEventId && googleAccessToken) {
+          await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${googleAccessToken}`
+            }
+          });
+          setGoogleEvents(prev => prev.filter(e => e.id !== googleEventId));
+        }
+      }
+      setSelectedEvent(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `calendar_events/${id}`);
+      if (!isGoogle) {
+        handleFirestoreError(error, OperationType.DELETE, `calendar_events/${id}`);
+      } else {
+        console.error("Failed to delete Google event", error);
+      }
     }
   };
 
@@ -118,7 +301,9 @@ const Calendar: React.FC = () => {
       borderColor: event.color,
       extendedProps: { ...event, isGoogle: false }
     })),
-    ...googleEvents.map(event => ({
+    ...googleEvents
+      .filter(gEvent => !events.some(e => e.googleEventId === gEvent.id))
+      .map(event => ({
       id: event.id,
       title: event.summary,
       start: event.start?.dateTime || event.start?.date,
@@ -131,6 +316,7 @@ const Calendar: React.FC = () => {
         endTime: { toDate: () => new Date(event.end?.dateTime || event.end?.date) },
         color: '#4285F4',
         isGoogle: true,
+        googleEventId: event.id,
         htmlLink: event.htmlLink
       }
     }))
@@ -240,6 +426,117 @@ const Calendar: React.FC = () => {
               eventClick={(info) => {
                 setSelectedEvent(info.event.extendedProps as CalendarEvent);
               }}
+              eventDrop={async (info) => {
+                const event = info.event.extendedProps as CalendarEvent;
+                try {
+                  if (event.isGoogle && event.googleEventId && googleAccessToken) {
+                    await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.googleEventId}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Authorization': `Bearer ${googleAccessToken}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        start: { dateTime: info.event.start!.toISOString() },
+                        end: { dateTime: (info.event.end || info.event.start!).toISOString() }
+                      })
+                    });
+                    // Update local state to reflect change immediately
+                    setGoogleEvents(prev => prev.map(e => e.id === event.googleEventId ? {
+                      ...e,
+                      start: { dateTime: info.event.start!.toISOString() },
+                      end: { dateTime: (info.event.end || info.event.start!).toISOString() }
+                    } : e));
+                  } else if (!event.isGoogle) {
+                    const newStart = Timestamp.fromDate(info.event.start!);
+                    const newEnd = Timestamp.fromDate(info.event.end || info.event.start!);
+                    await updateDoc(doc(db, 'calendar_events', event.id), {
+                      startTime: newStart,
+                      endTime: newEnd
+                    });
+                    if (event.googleEventId && googleAccessToken) {
+                      await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.googleEventId}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Authorization': `Bearer ${googleAccessToken}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          start: { dateTime: info.event.start!.toISOString() },
+                          end: { dateTime: (info.event.end || info.event.start!).toISOString() }
+                        })
+                      });
+                      setGoogleEvents(prev => prev.map(e => e.id === event.googleEventId ? {
+                        ...e,
+                        start: { dateTime: info.event.start!.toISOString() },
+                        end: { dateTime: (info.event.end || info.event.start!).toISOString() }
+                      } : e));
+                    }
+                  }
+                } catch (error) {
+                  info.revert();
+                  if (!event.isGoogle) {
+                    handleFirestoreError(error, OperationType.UPDATE, `calendar_events/${event.id}`);
+                  } else {
+                    console.error("Failed to update Google event", error);
+                  }
+                }
+              }}
+              eventResize={async (info) => {
+                const event = info.event.extendedProps as CalendarEvent;
+                try {
+                  if (event.isGoogle && event.googleEventId && googleAccessToken) {
+                    await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.googleEventId}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Authorization': `Bearer ${googleAccessToken}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        start: { dateTime: info.event.start!.toISOString() },
+                        end: { dateTime: info.event.end!.toISOString() }
+                      })
+                    });
+                    setGoogleEvents(prev => prev.map(e => e.id === event.googleEventId ? {
+                      ...e,
+                      start: { dateTime: info.event.start!.toISOString() },
+                      end: { dateTime: info.event.end!.toISOString() }
+                    } : e));
+                  } else if (!event.isGoogle) {
+                    const newStart = Timestamp.fromDate(info.event.start!);
+                    const newEnd = Timestamp.fromDate(info.event.end!);
+                    await updateDoc(doc(db, 'calendar_events', event.id), {
+                      startTime: newStart,
+                      endTime: newEnd
+                    });
+                    if (event.googleEventId && googleAccessToken) {
+                      await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.googleEventId}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Authorization': `Bearer ${googleAccessToken}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          start: { dateTime: info.event.start!.toISOString() },
+                          end: { dateTime: info.event.end!.toISOString() }
+                        })
+                      });
+                      setGoogleEvents(prev => prev.map(e => e.id === event.googleEventId ? {
+                        ...e,
+                        start: { dateTime: info.event.start!.toISOString() },
+                        end: { dateTime: info.event.end!.toISOString() }
+                      } : e));
+                    }
+                  }
+                } catch (error) {
+                  info.revert();
+                  if (!event.isGoogle) {
+                    handleFirestoreError(error, OperationType.UPDATE, `calendar_events/${event.id}`);
+                  } else {
+                    console.error("Failed to update Google event", error);
+                  }
+                }
+              }}
             />
           </div>
         </div>
@@ -318,23 +615,47 @@ const Calendar: React.FC = () => {
                   </p>
                 </div>
               </div>
+              
+              {selectedEvent.reminderMin && (
+                <div className="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+                  <Bell className="text-on-surface-variant" size={24} />
+                  <div>
+                    <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Reminder</p>
+                    <p className="font-black text-on-surface">
+                      {selectedEvent.reminderMin} minutes before
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4">
               {selectedEvent.isGoogle ? (
-                <a 
-                  href={selectedEvent.htmlLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 bg-primary-container/30 hover:bg-primary-container/50 text-primary py-4 rounded-2xl font-black transition-all"
-                >
-                  <CalendarIcon size={20} />
-                  View in Google Calendar
-                </a>
+                <div className="flex w-full gap-4">
+                  <a 
+                    href={selectedEvent.htmlLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 bg-primary-container/30 hover:bg-primary-container/50 text-primary py-4 rounded-2xl font-black transition-all"
+                  >
+                    <CalendarIcon size={20} />
+                    View in Google
+                  </a>
+                  <button 
+                    onClick={() => {
+                      handleDeleteEvent(selectedEvent.id, true, selectedEvent.googleEventId);
+                      setSelectedEvent(null);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-error-container hover:bg-error-container/80 text-on-error-container py-4 rounded-2xl font-black transition-all"
+                  >
+                    <Trash2 size={20} />
+                    Delete
+                  </button>
+                </div>
               ) : (
                 <button 
                   onClick={() => {
-                    handleDeleteEvent(selectedEvent.id);
+                    handleDeleteEvent(selectedEvent.id, false, selectedEvent.googleEventId);
                     setSelectedEvent(null);
                   }}
                   className="flex-1 flex items-center justify-center gap-2 bg-error-container hover:bg-error-container/80 text-on-error-container py-4 rounded-2xl font-black transition-all"
@@ -412,6 +733,23 @@ const Calendar: React.FC = () => {
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Reminder (Minutes before)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Bell className="text-on-surface-variant" size={20} />
+                  </div>
+                  <input 
+                    type="number" 
+                    min="0"
+                    placeholder="e.g., 15" 
+                    className="w-full pl-12 pr-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary transition-all text-lg font-bold text-on-surface placeholder:text-on-surface-variant"
+                    value={newReminderMin}
+                    onChange={(e) => setNewReminderMin(e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Label Color</label>
                 <div className="flex gap-3">
                   {['#ea580c', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map(color => (
@@ -457,7 +795,9 @@ const Calendar: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-on-surface leading-relaxed">
-                  <Markdown className="markdown-body text-sm">{insightsText}</Markdown>
+                  <div className="markdown-body text-sm">
+                    <Markdown>{insightsText}</Markdown>
+                  </div>
                 </div>
               )}
             </div>

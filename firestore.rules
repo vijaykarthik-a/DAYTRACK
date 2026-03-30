@@ -94,6 +94,14 @@ service cloud.firestore {
     //   - createdAt: timestamp (required)
     //   - updatedAt: timestamp (required)
     //
+    // Collection: diet_logs
+    // Document ID: logId
+    // Fields:
+    //   - food: string (required, < 200 chars)
+    //   - calories: number (required, >= 0)
+    //   - date: timestamp (required)
+    //   - userId: string (required, matches owner)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -215,6 +223,13 @@ service cloud.firestore {
              data.updatedAt is timestamp;
     }
 
+    function isValidDietLog(data) {
+      return data.food is string && data.food.size() > 0 && data.food.size() < 200 &&
+             data.calories is number && data.calories >= 0 &&
+             data.date is timestamp &&
+             data.userId == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -285,6 +300,13 @@ service cloud.firestore {
       allow read: if isDocOwner() || isAdmin();
       allow create: if isRequestOwner() && isValidStudyNote(request.resource.data);
       allow update: if isDocOwner() && isRequestOwner() && isValidStudyNote(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /diet_logs/{logId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidDietLog(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidDietLog(request.resource.data);
       allow delete: if isDocOwner() || isAdmin();
     }
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ThemeProvider } from './ThemeContext';
 import Layout from './Layout';
@@ -10,6 +11,7 @@ import Focus from './pages/Focus';
 import Routines from './pages/Routines';
 import Tracker from './pages/Tracker';
 import Study from './pages/Study';
+import Diet from './pages/Diet';
 import Login from './pages/Login';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -35,6 +37,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <Router>
+          <Toaster position="top-right" richColors />
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -44,6 +47,7 @@ export default function App() {
             <Route path="/routines" element={<ProtectedRoute><Routines /></ProtectedRoute>} />
             <Route path="/tracker" element={<ProtectedRoute><Tracker /></ProtectedRoute>} />
             <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
+            <Route path="/diet" element={<ProtectedRoute><Diet /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Router>

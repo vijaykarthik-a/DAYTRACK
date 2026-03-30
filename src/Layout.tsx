@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
 import { clsx, type ClassValue } from 'clsx';
@@ -10,29 +10,124 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const AVAILABLE_MODULES = [
+  { id: 'tasks', name: 'Tasks', icon: 'check_circle', description: 'Manage your to-dos and projects' },
+  { id: 'calendar', name: 'Calendar', icon: 'calendar_today', description: 'Schedule events and sync with Google' },
+  { id: 'focus', name: 'Focus', icon: 'timer', description: 'Pomodoro timer for deep work' },
+  { id: 'routines', name: 'Routines', icon: 'repeat', description: 'Build daily habits' },
+  { id: 'tracker', name: 'Tracker', icon: 'analytics', description: 'Track custom metrics over time' },
+  { id: 'study', name: 'Study', icon: 'school', description: 'Organize subjects and notes' },
+  { id: 'diet', name: 'Diet', icon: 'restaurant', description: 'Track calories and get AI diet advice' },
+];
+
+const OnboardingModal: React.FC<{ onComplete: (modules: string[]) => void, initialSelected?: string[], onClose?: () => void }> = ({ onComplete, initialSelected, onClose }) => {
+  const [selected, setSelected] = useState<string[]>(initialSelected || ['tasks', 'calendar']);
+
+  const toggleModule = (id: string) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-inverse-surface/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 md:p-6">
+      <div className="bg-surface-container-lowest w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-8 animate-in fade-in zoom-in duration-300 relative">
+        {onClose && (
+          <button onClick={onClose} className="absolute top-6 right-6 p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        )}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-black text-on-surface mb-2">{onClose ? 'Preferences' : 'Welcome to DailyFlow'}</h2>
+          <p className="text-on-surface-variant">Personalize your experience. Select the modules you need.</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 max-h-[50vh] overflow-y-auto pr-2 dark-scrollbar">
+          {AVAILABLE_MODULES.map(mod => {
+            const isSelected = selected.includes(mod.id);
+            return (
+              <div 
+                key={mod.id}
+                onClick={() => toggleModule(mod.id)}
+                className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-4 ${
+                  isSelected 
+                    ? 'border-primary bg-primary-container/20' 
+                    : 'border-outline-variant/20 bg-surface-container-low hover:border-outline-variant/50'
+                }`}
+              >
+                <div className={`p-3 rounded-xl ${isSelected ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-on-surface-variant'}`}>
+                  <span className="material-symbols-outlined">{mod.icon}</span>
+                </div>
+                <div>
+                  <h3 className={`font-bold ${isSelected ? 'text-primary' : 'text-on-surface'}`}>{mod.name}</h3>
+                  <p className="text-xs text-on-surface-variant mt-1">{mod.description}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <button 
+          onClick={() => onComplete(selected)}
+          disabled={selected.length === 0}
+          className="w-full bg-primary hover:opacity-90 disabled:opacity-50 text-on-primary py-4 rounded-2xl font-black text-lg shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+        >
+          {selected.length === 0 ? 'Select at least one' : 'Continue'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { profile, logout } = useAuth();
+  const { profile, logout, updateProfileData } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isPreferencesOpen, setIsPreferencesOpen] = React.useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const navItems = [
-    { name: 'Dashboard', path: '/', icon: 'dashboard' },
-    { name: 'Tasks', path: '/tasks', icon: 'check_circle' },
-    { name: 'Calendar', path: '/calendar', icon: 'calendar_today' },
-    { name: 'Focus', path: '/focus', icon: 'timer' },
-    { name: 'Routines', path: '/routines', icon: 'repeat' },
-    { name: 'Tracker', path: '/tracker', icon: 'analytics' },
-    { name: 'Study', path: '/study', icon: 'school' },
+  const allNavItems = [
+    { id: 'dashboard', name: 'Dashboard', path: '/', icon: 'dashboard' },
+    { id: 'tasks', name: 'Tasks', path: '/tasks', icon: 'check_circle' },
+    { id: 'calendar', name: 'Calendar', path: '/calendar', icon: 'calendar_today' },
+    { id: 'focus', name: 'Focus', path: '/focus', icon: 'timer' },
+    { id: 'routines', name: 'Routines', path: '/routines', icon: 'repeat' },
+    { id: 'tracker', name: 'Tracker', path: '/tracker', icon: 'analytics' },
+    { id: 'study', name: 'Study', path: '/study', icon: 'school' },
+    { id: 'diet', name: 'Diet', path: '/diet', icon: 'restaurant' },
   ];
+
+  const enabledModules = profile?.enabledModules;
+  const showOnboarding = profile && !enabledModules;
+
+  const navItems = allNavItems.filter(item => 
+    item.id === 'dashboard' || (enabledModules && enabledModules.includes(item.id))
+  );
+
+  // Redirect if trying to access a disabled module
+  useEffect(() => {
+    if (enabledModules && location.pathname !== '/') {
+      const currentModule = allNavItems.find(item => item.path === location.pathname);
+      if (currentModule && currentModule.id !== 'dashboard' && !enabledModules.includes(currentModule.id)) {
+        navigate('/');
+      }
+    }
+  }, [location.pathname, enabledModules, navigate]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
+  const handleOnboardingComplete = async (modules: string[]) => {
+    await updateProfileData({ enabledModules: modules });
+    setIsPreferencesOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-background text-on-background flex flex-col md:flex-row font-body selection:bg-primary-container selection:text-on-primary-container transition-colors duration-500">
+      {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
+      {isPreferencesOpen && <OnboardingModal onComplete={handleOnboardingComplete} initialSelected={enabledModules} onClose={() => setIsPreferencesOpen(false)} />}
+      
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-surface-container-lowest border-r border-outline-variant/20 h-screen fixed left-0 top-0 p-4 overflow-y-auto z-50 dark-scrollbar transition-colors duration-500">
         <div className="mb-8 px-2 flex items-center justify-between">
@@ -71,6 +166,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </nav>
 
         <div className="mt-auto pt-4 border-t border-outline-variant/20 space-y-1">
+          <button 
+            onClick={() => setIsPreferencesOpen(true)}
+            className="flex items-center gap-3 w-full px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors duration-200 font-headline font-bold text-sm tracking-tight text-left"
+          >
+            <span className="material-symbols-outlined">settings</span>
+            <span>Preferences</span>
+          </button>
           <button 
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-3 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-lg transition-colors duration-200 font-headline font-bold text-sm tracking-tight text-left"
@@ -138,6 +240,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 )}
               </NavLink>
             ))}
+            <button 
+              onClick={() => {
+                setIsPreferencesOpen(true);
+                setIsMobileMenuOpen(false);
+              }}
+              className="flex items-center gap-4 py-4 text-lg text-on-surface-variant px-4 w-full text-left font-headline font-bold mt-4"
+            >
+              <span className="material-symbols-outlined text-2xl">settings</span>
+              Preferences
+            </button>
             <button 
               onClick={handleLogout}
               className="flex items-center gap-4 py-4 text-lg text-error px-4 w-full text-left font-headline font-bold mt-4"
