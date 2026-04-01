@@ -163,7 +163,7 @@ service cloud.firestore {
              data.priority in ['low', 'medium', 'high'] &&
              data.status in ['todo', 'in_progress', 'done'] &&
              data.userId == request.auth.uid &&
-             (data.subtasks == null || data.subtasks is list);
+             (!('subtasks' in data) || data.subtasks is list);
     }
 
     function isValidEvent(data) {

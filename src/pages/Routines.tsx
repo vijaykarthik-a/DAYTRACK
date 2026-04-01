@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { db, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, handleFirestoreError, OperationType } from '../firebase';
 import { Routine, RoutineLog } from '../types';
-import { format, startOfDay, subDays, isSameDay } from 'date-fns';
+import { format, startOfDay, subDays, isSameDay, addDays, startOfWeek } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -120,12 +120,18 @@ const Routines: React.FC = () => {
   const currentDayOfWeek = selectedDate.getDay();
   const activeRoutinesForDay = routines.filter(r => r.isActive && r.daysOfWeek.includes(currentDayOfWeek));
 
+  const weekStart = startOfWeek(selectedDate);
+  const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
+
+  const isToday = isSameDay(selectedDate, new Date());
+  const dateLabel = isToday ? "Today's" : format(selectedDate, "EEEE's");
+
   return (
     <div className="space-y-10 pb-24 md:pb-10 max-w-4xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-on-surface">Reminders</h1>
-          <p className="text-on-surface-variant font-bold text-xs uppercase tracking-widest mt-1">Mindful Alerts</p>
+          <h1 className="text-4xl font-black tracking-tight text-on-surface">Routines</h1>
+          <p className="text-on-surface-variant font-bold text-xs uppercase tracking-widest mt-1">Build Better Habits</p>
         </div>
         <button 
           onClick={() => setIsAddModalOpen(true)}
@@ -136,52 +142,83 @@ const Routines: React.FC = () => {
         </button>
       </div>
 
+      {/* Week Selector */}
+      <div className="bg-surface-container-lowest p-4 rounded-[2rem] border border-outline-variant/20 shadow-sm flex justify-between items-center overflow-x-auto hide-scrollbar gap-2">
+        {weekDays.map(day => {
+          const isSelected = isSameDay(day, selectedDate);
+          const isCurrentDay = isSameDay(day, new Date());
+          return (
+            <button
+              key={day.toISOString()}
+              onClick={() => setSelectedDate(day)}
+              className={cn(
+                "flex flex-col items-center justify-center min-w-[3rem] h-16 rounded-2xl transition-all",
+                isSelected 
+                  ? "bg-primary text-on-primary shadow-md shadow-primary/20" 
+                  : isCurrentDay
+                    ? "bg-primary-container/50 text-primary hover:bg-primary-container"
+                    : "hover:bg-surface-container text-on-surface-variant"
+              )}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-widest mb-1">{format(day, 'EEE')}</span>
+              <span className="text-lg font-black leading-none">{format(day, 'd')}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-black text-on-surface">Today's Alarms</h2>
+          <h2 className="text-2xl font-black text-on-surface">{dateLabel} Alarms</h2>
           <span className="text-xs font-bold text-primary uppercase tracking-wider">{activeRoutinesForDay.length} Active</span>
         </div>
         <div className="space-y-4">
-          {activeRoutinesForDay.map(routine => (
-            <div key={routine.id} className="bg-surface-container-lowest p-6 rounded-[2rem] border border-outline-variant/20 shadow-sm flex items-center justify-between group">
-              <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
-                <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 bg-primary-container/30 text-primary rounded-full flex items-center justify-center">
-                  <Bell size={24} className="md:w-7 md:h-7" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xl md:text-2xl font-mono font-black text-on-surface leading-none mb-1 truncate">{routine.timeOfDay}</p>
-                  <p className="text-xs md:text-sm font-medium text-on-surface-variant truncate">{routine.title}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => deleteRoutine(routine.id)}
-                className="p-3 text-outline-variant hover:text-error opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0"
-              >
-                <Trash2 size={20} />
-              </button>
+          {activeRoutinesForDay.length === 0 ? (
+            <div className="text-center py-8 bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 border-dashed">
+              <p className="text-on-surface-variant font-medium">No alarms set for this day.</p>
             </div>
-          ))}
+          ) : (
+            activeRoutinesForDay.map(routine => (
+              <div key={routine.id} className="bg-surface-container-lowest p-6 rounded-[2rem] border border-outline-variant/20 shadow-sm flex items-center justify-between group">
+                <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
+                  <div className={cn("w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-full flex items-center justify-center text-white shadow-inner", routine.color || 'bg-primary')}>
+                    <Bell size={24} className="md:w-7 md:h-7" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xl md:text-2xl font-mono font-black text-on-surface leading-none mb-1 truncate">{routine.timeOfDay}</p>
+                    <p className="text-xs md:text-sm font-medium text-on-surface-variant truncate">{routine.title}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => deleteRoutine(routine.id)}
+                  className="p-3 text-outline-variant hover:text-error opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-black text-on-surface">Daily Repeats</h2>
+          <h2 className="text-2xl font-black text-on-surface">Daily Progress</h2>
           <button className="p-2 bg-surface-container text-on-surface-variant rounded-full">
             <Info size={16} />
           </button>
         </div>
         <div className="space-y-4">
           {routines.map(routine => {
-            const isDone = routineLogs.some(l => l.routineId === routine.id && l.logDate === format(new Date(), 'yyyy-MM-dd') && l.done);
+            const isDone = routineLogs.some(l => l.routineId === routine.id && l.logDate === format(selectedDate, 'yyyy-MM-dd') && l.done);
             return (
               <div key={routine.id} className="bg-surface-container-lowest p-6 rounded-[2rem] border border-outline-variant/20 shadow-sm flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4 md:gap-6 flex-1 min-w-0">
-                  <div className="w-12 h-12 md:w-14 md:h-14 shrink-0 bg-surface-container-low text-on-surface-variant rounded-2xl flex items-center justify-center">
+                  <div className={cn("w-12 h-12 md:w-14 md:h-14 shrink-0 rounded-2xl flex items-center justify-center text-white shadow-inner", routine.color || 'bg-primary', !isDone && "opacity-50 grayscale")}>
                     <Repeat size={24} className="md:w-7 md:h-7" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base md:text-lg font-black text-on-surface leading-none mb-1 truncate">{routine.title}</p>
+                    <p className={cn("text-base md:text-lg font-black leading-none mb-1 truncate transition-colors", isDone ? "text-on-surface" : "text-on-surface-variant")}>{routine.title}</p>
                     <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest truncate">
                       {routine.daysOfWeek.length === 7 ? 'Every Day' : routine.daysOfWeek.map(d => daysLabels[d]).join(', ')}
                     </p>
@@ -191,10 +228,11 @@ const Routines: React.FC = () => {
                   onClick={() => toggleRoutineLog(routine.id)}
                   className={cn(
                     "w-14 h-8 rounded-full p-1 transition-all duration-300 flex items-center shrink-0",
-                    isDone ? "bg-primary justify-end" : "bg-surface-container-highest justify-start"
+                    isDone ? "justify-end" : "bg-surface-container-highest justify-start",
+                    isDone && (routine.color || 'bg-primary')
                   )}
                 >
-                  <div className="w-6 h-6 bg-surface-container-lowest rounded-full shadow-sm" />
+                  <div className="w-6 h-6 bg-white rounded-full shadow-sm" />
                 </button>
               </div>
             );

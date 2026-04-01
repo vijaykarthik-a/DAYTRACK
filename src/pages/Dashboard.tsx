@@ -16,7 +16,7 @@ import {
   Flame
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { db, collection, query, where, onSnapshot, Timestamp } from '../firebase';
+import { db, collection, query, where, onSnapshot, Timestamp, doc, setDoc, handleFirestoreError, OperationType } from '../firebase';
 import { Task, Routine, RoutineLog } from '../types';
 import { Link } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
@@ -27,12 +27,14 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const Dashboard: React.FC = () => {
-  const { profile, user } = useAuth();
+  const { profile, user, googleAccessToken, connectGoogleCalendar } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [routineLogs, setRoutineLogs] = useState<RoutineLog[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
+  const [localEvents, setLocalEvents] = useState<any[]>([]);
+  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -66,6 +68,11 @@ const Dashboard: React.FC = () => {
       where('userId', '==', user.uid)
     );
 
+    const eventsQuery = query(
+      collection(db, 'calendar_events'),
+      where('userId', '==', user.uid)
+    );
+
     const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
       setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
     });
@@ -90,13 +97,63 @@ const Dashboard: React.FC = () => {
       setTodayCalories(cals);
     });
 
+    const unsubEvents = onSnapshot(eventsQuery, (snapshot) => {
+      setLocalEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
     return () => {
       unsubTasks();
       unsubRoutines();
       unsubLogs();
       unsubDiet();
+      unsubEvents();
     };
   }, [user]);
+
+  useEffect(() => {
+    const fetchGoogleEvents = async () => {
+      if (!googleAccessToken) return;
+      try {
+        const timeMin = new Date();
+        timeMin.setHours(0, 0, 0, 0);
+        const timeMax = new Date();
+        timeMax.setHours(23, 59, 59, 999);
+        
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin.toISOString()}&timeMax=${timeMax.toISOString()}&maxResults=10&singleEvents=true&orderBy=startTime`, {
+          headers: { Authorization: `Bearer ${googleAccessToken}` }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setGoogleEvents(data.items || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch Google Calendar events", error);
+      }
+    };
+
+    fetchGoogleEvents();
+  }, [googleAccessToken]);
+
+  const toggleRoutineLog = async (routineId: string) => {
+    if (!user) return;
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const existingLog = routineLogs.find(log => log.routineId === routineId && log.logDate === dateStr);
+    
+    const logId = existingLog?.id || `${routineId}_${dateStr}`;
+    const logRef = doc(db, 'routine_logs', logId);
+
+    try {
+      await setDoc(logRef, {
+        routineId,
+        logDate: dateStr,
+        done: !existingLog?.done,
+        userId: user.uid
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `routine_logs/${logId}`);
+    }
+  };
 
   const todayTasks = tasks.filter(t => {
     if (!t.dueDate) return false;
@@ -120,6 +177,33 @@ const Dashboard: React.FC = () => {
   const hasRoutines = enabledModules.includes('routines');
   const hasFocus = enabledModules.includes('focus');
   const hasDiet = enabledModules.includes('diet');
+  const hasCalendar = enabledModules.includes('calendar');
+
+  const todayEvents = [
+    ...localEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      start: e.startTime.toDate(),
+      end: e.endTime.toDate(),
+      isGoogle: false,
+      color: e.color || '#primary'
+    })),
+    ...googleEvents
+      .filter(gEvent => !localEvents.some(e => e.googleEventId === gEvent.id))
+      .map(event => ({
+        id: event.id,
+        title: event.summary,
+        start: new Date(event.start?.dateTime || event.start?.date),
+        end: new Date(event.end?.dateTime || event.end?.date),
+        isGoogle: true,
+        color: '#4285F4'
+      }))
+  ]
+  .filter(e => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    return format(e.start, 'yyyy-MM-dd') === todayStr;
+  })
+  .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   return (
     <div className="space-y-10 pb-20 md:pb-10">
@@ -234,6 +318,59 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
           )}
+
+          {/* Today's Schedule Card */}
+          {hasCalendar && (
+          <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/20 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-on-surface font-bold flex items-center gap-2">
+                <CalendarIcon size={18} className="text-primary" />
+                Today's Schedule
+              </h3>
+              <div className="flex items-center gap-3">
+                {!googleAccessToken && (
+                  <button 
+                    onClick={connectGoogleCalendar}
+                    className="text-xs font-semibold bg-surface-container-high px-3 py-1.5 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-1"
+                  >
+                    Connect Google
+                  </button>
+                )}
+                <Link to="/calendar" className="text-outline-variant hover:text-on-surface transition-colors">
+                  <ChevronRight size={20} />
+                </Link>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              {todayEvents.length > 0 ? (
+                todayEvents.map(event => (
+                  <div key={event.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low border border-outline-variant/20 hover:bg-surface-container transition-all">
+                    <div className="w-2 h-10 rounded-full" style={{ backgroundColor: event.color === '#primary' ? 'var(--color-primary)' : event.color }}></div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-on-surface">{event.title}</h4>
+                      <p className="text-sm text-on-surface-variant">
+                        {format(event.start, 'h:mm a')} - {format(event.end, 'h:mm a')}
+                      </p>
+                    </div>
+                    {event.isGoogle && (
+                      <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">G</span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 bg-surface-container-low rounded-2xl border border-outline-variant/20 border-dashed">
+                  <p className="text-on-surface-variant font-medium">No events scheduled for today.</p>
+                  <Link to="/calendar" className="text-primary text-sm font-semibold mt-2 inline-block hover:underline">
+                    Open Calendar
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+          )}
         </div>
 
         {/* Right Column: Quick Actions & Focus */}
@@ -299,7 +436,11 @@ const Dashboard: React.FC = () => {
               {todayRoutines.slice(0, 4).map(routine => {
                 const isDone = routineLogs.some(log => log.routineId === routine.id && log.done);
                 return (
-                  <div key={routine.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low border border-outline-variant/20 group hover:bg-surface-container hover:shadow-md transition-all cursor-pointer">
+                  <div 
+                    key={routine.id} 
+                    onClick={() => toggleRoutineLog(routine.id)}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low border border-outline-variant/20 group hover:bg-surface-container hover:shadow-md transition-all cursor-pointer"
+                  >
                     <div className={cn(
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
                       isDone ? "bg-primary border-primary" : "border-outline-variant group-hover:border-primary/50"

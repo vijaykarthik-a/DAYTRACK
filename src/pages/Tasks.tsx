@@ -58,14 +58,17 @@ const Tasks: React.FC = () => {
     e.preventDefault();
     if (!user || !newTitle.trim()) return;
 
-    const newTask: Omit<Task, 'id'> = {
+    const newTask: any = {
       title: newTitle,
       priority: newPriority,
       status: 'todo',
       userId: user.uid,
       createdAt: Timestamp.now(),
-      dueDate: newDueDate ? Timestamp.fromDate(new Date(newDueDate)) : undefined,
     };
+    
+    if (newDueDate) {
+      newTask.dueDate = Timestamp.fromDate(new Date(newDueDate));
+    }
 
     try {
       await addDoc(collection(db, 'tasks'), newTask);
@@ -180,7 +183,9 @@ const Tasks: React.FC = () => {
     let matchesDate = true;
     if (filterDate !== 'all') {
       const [type, range] = filterDate.split('_');
-      const targetDate = type === 'created' ? t.createdAt?.toDate() : t.completedAt?.toDate();
+      const targetDate = type === 'created' 
+        ? (t.createdAt ? t.createdAt.toDate() : null) 
+        : (t.completedAt ? t.completedAt.toDate() : null);
       
       if (!targetDate) {
         matchesDate = false;
