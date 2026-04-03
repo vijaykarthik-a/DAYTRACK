@@ -85,7 +85,11 @@ const Diet: React.FC = () => {
     setIsChatLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       // Calculate weekly calories for context
       const now = new Date();

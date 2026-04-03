@@ -333,7 +333,11 @@ const Calendar: React.FC = () => {
     setInsightsText('');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       let dataSummary = "User's Upcoming Schedule:\n\n";
       upcomingEvents.forEach(event => {

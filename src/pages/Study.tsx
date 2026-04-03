@@ -212,7 +212,11 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       // Gather all notes for context
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
@@ -246,7 +250,11 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
@@ -278,7 +286,11 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
