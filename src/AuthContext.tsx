@@ -39,7 +39,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
+  const [googleAccessToken, setGoogleAccessTokenState] = useState<string | null>(() => {
+    const stored = localStorage.getItem('googleAccessToken');
+    if (stored) {
+      try {
+        const { token, expiresAt } = JSON.parse(stored);
+        if (Date.now() < expiresAt) {
+          return token;
+        } else {
+          localStorage.removeItem('googleAccessToken');
+        }
+      } catch (e) {
+        localStorage.removeItem('googleAccessToken');
+      }
+    }
+    return null;
+  });
+
+  const setGoogleAccessToken = (token: string | null) => {
+    if (token) {
+      // Set expiration to 55 minutes from now to be safe (Google tokens expire in 60 mins)
+      const expiresAt = Date.now() + 55 * 60 * 1000;
+      localStorage.setItem('googleAccessToken', JSON.stringify({ token, expiresAt }));
+    } else {
+      localStorage.removeItem('googleAccessToken');
+    }
+    setGoogleAccessTokenState(token);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
