@@ -10,11 +10,11 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
 
   // API routes FIRST
-  app.get("/health-check", (req, res) => {
+  app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
 
-  app.post("/ai-generate", async (req, res) => {
+  app.post("/api/generate", async (req, res) => {
     try {
       const { contents, systemInstruction } = req.body;
       const apiKey = process.env.OPENAI_API_KEY;
