@@ -26,7 +26,11 @@ import { toast } from 'sonner';
 const Calendar: React.FC = () => {
   const { user, googleAccessToken, connectGoogleCalendar } = useAuth();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
+  const [googleEvents, setGoogleEvents] = useState<any[]>(() => {
+    const cached = localStorage.getItem('cachedGoogleEvents_full');
+    return cached ? JSON.parse(cached) : [];
+  });
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const calendarRef = useRef<FullCalendar>(null);
@@ -118,7 +122,11 @@ const Calendar: React.FC = () => {
         
         if (res.ok) {
           const data = await res.json();
-          setGoogleEvents(data.items || []);
+          const items = data.items || [];
+          setGoogleEvents(items);
+          localStorage.setItem('cachedGoogleEvents_full', JSON.stringify(items));
+        } else if (res.status === 401) {
+          console.warn("Google token expired. Using cached events.");
         }
       } catch (error) {
         console.error("Failed to fetch Google Calendar events", error);
@@ -259,12 +267,16 @@ const Calendar: React.FC = () => {
     try {
       if (isGoogle && googleAccessToken) {
         // Delete directly from Google Calendar
-        await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${id}`, {
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${googleAccessToken}`
           }
         });
+        if (res.status === 401) {
+          alert('Your Google Calendar session has expired. Please click "Connect Google" to re-authenticate before deleting.');
+          return;
+        }
         setGoogleEvents(prev => prev.filter(e => e.id !== id));
       } else {
         // Delete from Firestore
@@ -272,13 +284,17 @@ const Calendar: React.FC = () => {
         
         // Delete from Google Calendar if linked
         if (googleEventId && googleAccessToken) {
-          await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
+          const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${googleAccessToken}`
             }
           });
-          setGoogleEvents(prev => prev.filter(e => e.id !== googleEventId));
+          if (res.status === 401) {
+            alert('Local event deleted. However, Google session expired so it may still appear on your Google Calendar.');
+          } else {
+            setGoogleEvents(prev => prev.filter(e => e.id !== googleEventId));
+          }
         }
       }
       setSelectedEvent(null);

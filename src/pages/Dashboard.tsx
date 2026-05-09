@@ -16,11 +16,12 @@ import {
   Flame
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { db, collection, query, where, onSnapshot, Timestamp, doc, setDoc, handleFirestoreError, OperationType } from '../firebase';
+import { db, collection, query, where, onSnapshot, Timestamp, doc, setDoc, deleteDoc, handleFirestoreError, OperationType } from '../firebase';
 import { Task, Routine, RoutineLog } from '../types';
 import { Link } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { Trash2 } from 'lucide-react'; // ADD TRASH2 IMPORT
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,7 +35,10 @@ const Dashboard: React.FC = () => {
   const [routineLogs, setRoutineLogs] = useState<RoutineLog[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
   const [localEvents, setLocalEvents] = useState<any[]>([]);
-  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
+  const [googleEvents, setGoogleEvents] = useState<any[]>(() => {
+    const cached = localStorage.getItem('cachedGoogleEvents');
+    return cached ? JSON.parse(cached) : [];
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -125,7 +129,11 @@ const Dashboard: React.FC = () => {
         
         if (res.ok) {
           const data = await res.json();
-          setGoogleEvents(data.items || []);
+          const items = data.items || [];
+          setGoogleEvents(items);
+          localStorage.setItem('cachedGoogleEvents', JSON.stringify(items));
+        } else if (res.status === 401) {
+          console.warn("Google token expired. Using cached events.");
         }
       } catch (error) {
         console.error("Failed to fetch Google Calendar events", error);
@@ -152,6 +160,42 @@ const Dashboard: React.FC = () => {
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `routine_logs/${logId}`);
+    }
+  };
+
+  const handleDeleteEvent = async (id: string, isGoogle?: boolean, googleEventId?: string) => {
+    if (!window.confirm('Are you sure you want to delete this event?')) return;
+    try {
+      if (isGoogle && googleAccessToken) {
+        const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+        });
+        if (res.status === 401) {
+          alert('Google Calendar session expired. Please connect again from the calendar view to delete this event.');
+          return;
+        }
+        setGoogleEvents(prev => prev.filter(e => e.id !== id));
+      } else {
+        await deleteDoc(doc(db, 'calendar_events', id));
+        if (googleEventId && googleAccessToken) {
+          const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+          });
+          if (res.status === 401) {
+            alert('Local event deleted. Google Calendar sync failed because session expired.');
+          } else {
+            setGoogleEvents(prev => prev.filter(e => e.id !== googleEventId));
+          }
+        }
+      }
+    } catch (error) {
+      if (!isGoogle) {
+        handleFirestoreError(error, OperationType.DELETE, `calendar_events/${id}`);
+      } else {
+        console.error("Failed to delete Google event", error);
+      }
     }
   };
 
@@ -345,7 +389,7 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               {todayEvents.length > 0 ? (
                 todayEvents.map(event => (
-                  <div key={event.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low border border-outline-variant/20 hover:bg-surface-container transition-all">
+                  <div key={event.id} className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-low border border-outline-variant/20 hover:bg-surface-container transition-all group">
                     <div className="w-2 h-10 rounded-full" style={{ backgroundColor: event.color === '#primary' ? 'var(--color-primary)' : event.color }}></div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-on-surface">{event.title}</h4>
@@ -358,6 +402,13 @@ const Dashboard: React.FC = () => {
                         <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">G</span>
                       </div>
                     )}
+                    <button 
+                      onClick={() => handleDeleteEvent(event.id, event.isGoogle, (event as any).googleEventId)}
+                      className="opacity-0 group-hover:opacity-100 p-2 text-error hover:bg-error-container/20 rounded-full transition-all"
+                      title="Delete Event"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 ))
               ) : (

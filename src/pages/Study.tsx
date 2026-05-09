@@ -17,6 +17,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
+import { format } from 'date-fns';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -38,6 +39,8 @@ const Study: React.FC = () => {
   const [scheduleTitle, setScheduleTitle] = useState('');
   const [scheduleStart, setScheduleStart] = useState('');
   const [scheduleEnd, setScheduleEnd] = useState('');
+  
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
   // Note editing state
   const [noteTitle, setNoteTitle] = useState('');
@@ -62,7 +65,15 @@ const Study: React.FC = () => {
       }
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'study_subjects'));
 
-    return () => unsubSubjects();
+    const eventsQuery = query(collection(db, 'calendar_events'), where('userId', '==', user.uid));
+    const unsubEvents = onSnapshot(eventsQuery, (snapshot) => {
+      setCalendarEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => handleFirestoreError(error, OperationType.LIST, 'calendar_events'));
+
+    return () => {
+      unsubSubjects();
+      unsubEvents();
+    };
   }, [user]);
 
   useEffect(() => {
@@ -167,38 +178,57 @@ const Study: React.FC = () => {
 
   const handleScheduleStudy = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!googleAccessToken) {
-      alert("Please connect your Google Calendar first.");
-      return;
-    }
+    if (!user) return;
 
     try {
-      const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${googleAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          summary: `Study: ${scheduleTitle}`,
-          description: `Study session scheduled via DailyFlow.`,
-          start: { dateTime: new Date(scheduleStart).toISOString() },
-          end: { dateTime: new Date(scheduleEnd).toISOString() },
-        })
-      });
+      let googleEventId = undefined;
+      let htmlLink = undefined;
 
-      if (!response.ok) {
-        throw new Error('Failed to create calendar event');
+      if (googleAccessToken) {
+        const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${googleAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            summary: `Study: ${scheduleTitle}`,
+            description: `Study session scheduled via DailyFlow.`,
+            start: { dateTime: new Date(scheduleStart).toISOString() },
+            end: { dateTime: new Date(scheduleEnd).toISOString() },
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          googleEventId = data.id;
+          htmlLink = data.htmlLink;
+          alert("Study session scheduled in Google Calendar!");
+        } else {
+          console.error('Failed to create Google calendar event');
+        }
       }
 
-      alert("Study session scheduled in Google Calendar!");
+      await addDoc(collection(db, 'calendar_events'), {
+        title: `${selectedSubject?.title || 'Study'}: ${scheduleTitle}`,
+        startTime: Timestamp.fromDate(new Date(scheduleStart)),
+        endTime: Timestamp.fromDate(new Date(scheduleEnd)),
+        color: '#8b5cf6', // A nice purple for study
+        userId: user.uid,
+        ...(googleEventId ? { googleEventId, htmlLink } : {})
+      });
+      
+      if (!googleAccessToken) {
+        alert("Study session added to Calendar!");
+      }
+
       setIsScheduleModalOpen(false);
       setScheduleTitle('');
       setScheduleStart('');
       setScheduleEnd('');
     } catch (error) {
       console.error(error);
-      alert("Failed to schedule event. Make sure you have granted Calendar permissions.");
+      alert("Failed to schedule event.");
     }
   };
 
@@ -313,6 +343,18 @@ const Study: React.FC = () => {
 
   const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
 
+  const upcomingStudyEvents = calendarEvents
+    .filter(e => {
+        if (!e.startTime) return false;
+        try {
+            return new Date(e.startTime.toDate()).getTime() > Date.now() && e.color === '#8b5cf6';
+        } catch {
+            return false;
+        }
+    })
+    .sort((a, b) => new Date(a.startTime.toDate()).getTime() - new Date(b.startTime.toDate()).getTime())
+    .slice(0, 5);
+
   return (
     <div className="md:h-[calc(100vh-5rem)] flex flex-col pb-24 md:pb-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
@@ -341,40 +383,62 @@ const Study: React.FC = () => {
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0">
-        {/* Subjects Sidebar */}
-        <div className="w-full md:w-64 bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm p-4 flex flex-col shrink-0 overflow-y-auto max-h-[30vh] md:max-h-none">
-          <h2 className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-4 px-2">Subjects</h2>
-          <div className="space-y-2">
-            {subjects.map(subject => (
-              <div 
-                key={subject.id}
-                className={cn(
-                  "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all group",
-                  selectedSubjectId === subject.id ? "bg-primary-container/30" : "hover:bg-surface-container-low"
-                )}
-                onClick={() => {
-                  setSelectedSubjectId(subject.id);
-                  setSelectedNoteId(null);
-                }}
-              >
-                <div className="flex items-center gap-3 truncate">
-                  <div className={cn("w-3 h-3 rounded-full shrink-0", subject.color)} />
-                  <span className={cn(
-                    "font-bold truncate text-sm",
-                    selectedSubjectId === subject.id ? "text-primary" : "text-on-surface"
-                  )}>{subject.title}</span>
-                </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleDeleteSubject(subject.id); }}
-                  className="text-on-surface-variant hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
+        {/* Side Panels */}
+        <div className="w-full md:w-64 flex flex-col gap-4 shrink-0 overflow-y-auto max-h-[30vh] md:max-h-none dark-scrollbar">
+          {/* Subjects Sidebar */}
+          <div className="bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm p-4 flex flex-col">
+            <h2 className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-4 px-2">Subjects</h2>
+            <div className="space-y-2">
+              {subjects.map(subject => (
+                <div 
+                  key={subject.id}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all group",
+                    selectedSubjectId === subject.id ? "bg-primary-container/30" : "hover:bg-surface-container-low"
+                  )}
+                  onClick={() => {
+                    setSelectedSubjectId(subject.id);
+                    setSelectedNoteId(null);
+                  }}
                 >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-            {subjects.length === 0 && (
-              <p className="text-sm text-on-surface-variant px-2 text-center py-4">No subjects yet.</p>
-            )}
+                  <div className="flex items-center gap-3 truncate">
+                    <div className={cn("w-3 h-3 rounded-full shrink-0", subject.color)} />
+                    <span className={cn(
+                      "font-bold truncate text-sm",
+                      selectedSubjectId === subject.id ? "text-primary" : "text-on-surface"
+                    )}>{subject.title}</span>
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleDeleteSubject(subject.id); }}
+                    className="text-on-surface-variant hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+              {subjects.length === 0 && (
+                <p className="text-sm text-on-surface-variant px-2 text-center py-4">No subjects yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Upcoming Sessions List */}
+          <div className="bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm p-4 flex flex-col flex-1 min-h-0">
+            <h2 className="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-4 px-2">Upcoming Sessions</h2>
+            <div className="space-y-2 overflow-y-auto">
+              {upcomingStudyEvents.map(event => (
+                <div key={event.id} className="p-3 bg-surface-container-low rounded-xl border border-outline-variant/10">
+                  <h3 className="font-bold text-on-surface text-sm truncate">{event.title}</h3>
+                  <div className="flex items-center gap-1.5 text-xs text-on-surface-variant mt-1.5 font-medium">
+                    <CalendarIcon size={12} />
+                    {format(event.startTime.toDate(), "MMM d, h:mm a")}
+                  </div>
+                </div>
+              ))}
+              {upcomingStudyEvents.length === 0 && (
+                <p className="text-xs text-on-surface-variant px-2 text-center py-2">No upcoming study sessions scheduled.</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -670,7 +734,7 @@ const Study: React.FC = () => {
                 className="w-full bg-primary hover:bg-primary/90 text-on-primary py-4 rounded-2xl font-black text-lg shadow-lg shadow-primary/20 transition-all mt-4 uppercase tracking-widest flex items-center justify-center gap-2"
               >
                 <CalendarIcon size={20} />
-                Add to Google Calendar
+                Add to Calendar
               </button>
             </form>
           </div>

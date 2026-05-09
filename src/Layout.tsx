@@ -18,6 +18,7 @@ const AVAILABLE_MODULES = [
   { id: 'tracker', name: 'Tracker', icon: 'analytics', description: 'Track custom metrics over time' },
   { id: 'study', name: 'Study', icon: 'school', description: 'Organize subjects and notes' },
   { id: 'diet', name: 'Diet', icon: 'restaurant', description: 'Track calories and get AI diet advice' },
+  { id: 'tournament', name: 'Tournament', icon: 'sports_esports', description: 'Gaming tournament rules and registration' },
 ];
 
 const OnboardingModal: React.FC<{ onComplete: (modules: string[]) => void, initialSelected?: string[], onClose?: () => void }> = ({ onComplete, initialSelected, onClose }) => {
@@ -94,6 +95,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { id: 'tracker', name: 'Tracker', path: '/tracker', icon: 'analytics' },
     { id: 'study', name: 'Study', path: '/study', icon: 'school' },
     { id: 'diet', name: 'Diet', path: '/diet', icon: 'restaurant' },
+    { id: 'tournament', name: 'Tournament', path: '/tournament', icon: 'sports_esports' },
   ];
 
   const enabledModules = profile?.enabledModules;

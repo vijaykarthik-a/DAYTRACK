@@ -12,6 +12,7 @@ import Routines from './pages/Routines';
 import Tracker from './pages/Tracker';
 import Study from './pages/Study';
 import Diet from './pages/Diet';
+import Tournament from './pages/Tournament';
 import Login from './pages/Login';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/tracker" element={<ProtectedRoute><Tracker /></ProtectedRoute>} />
             <Route path="/study" element={<ProtectedRoute><Study /></ProtectedRoute>} />
             <Route path="/diet" element={<ProtectedRoute><Diet /></ProtectedRoute>} />
+            <Route path="/tournament" element={<ProtectedRoute><Tournament /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Router>

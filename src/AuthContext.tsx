@@ -99,6 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async () => {
     try {
+      googleProvider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
       const result = await signInWithPopup(auth, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
