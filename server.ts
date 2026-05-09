@@ -36,7 +36,7 @@ async function startServer() {
       res.json({ text: response.choices[0].message.content });
     } catch (error: any) {
       console.error("AI Error:", error);
-      res.status(500).json({ error: error.message || "Unknown server error" });
+      res.status(400).json({ error: error.message || "Unknown server error" });
     }
   });
 

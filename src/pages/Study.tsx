@@ -296,8 +296,16 @@ const Study: React.FC = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: userMsg, systemInstruction })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      const textError = await res.text();
+      throw new Error(`Server returned an error: ${res.statusText}. ${textError.substring(0, 100)}...`);
+    }
+    
+    if (!res.ok) throw new Error(data.error || 'Unknown error from AI generation');
     return data.text;
   };
 
