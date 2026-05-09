@@ -9,7 +9,9 @@ import {
   Calendar as CalendarIcon,
   Send,
   Save,
-  Loader2
+  Loader2,
+  Upload,
+  FileText
 } from 'lucide-react';
 import { db, collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc, doc, Timestamp, handleFirestoreError, OperationType } from '../firebase';
 import { StudySubject, StudyNote } from '../types';
@@ -131,6 +133,34 @@ const Study: React.FC = () => {
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `study_subjects/${id}`);
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !selectedSubjectId) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        try {
+          const newNote = await addDoc(collection(db, 'study_notes'), {
+            subjectId: selectedSubjectId,
+            title: file.name,
+            content: text,
+            userId: user.uid,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          });
+          setSelectedNoteId(newNote.id);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, 'study_notes');
+        }
+      }
+    };
+    reader.readAsText(file);
+    // reset input
+    e.target.value = '';
   };
 
   const handleCreateNote = async () => {
@@ -305,13 +335,45 @@ const Study: React.FC = () => {
     }
   };
 
+  const handleGeneratePodcast = async () => {
+    if (!selectedSubjectId || notes.length === 0) {
+      alert("Please add some notes to this subject first.");
+      return;
+    }
+    
+    const userMsg = "Generate an 'Audio Overview' Transcript. It should be a dynamic, fun, 2-speaker podcast (hosts named Alex and Sam) analyzing and summarizing these notes. Use expressive text like [laugh] and tone markers.";
+    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsAiLoading(true);
+
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error("Gemini API key is missing.");
+      const ai = new GoogleGenAI({ apiKey });
+      const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
+      const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions.\n\nUser's Notes:\n${contextNotes}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: userMsg,
+        config: { systemInstruction }
+      });
+
+      setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
+    } catch (error: any) {
+      console.error("AI Error:", error);
+      setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   const handleSummarize = async () => {
     if (!selectedSubjectId || notes.length === 0) {
       alert("Please add some notes to this subject first.");
       return;
     }
     
-    const userMsg = "Summarize the key concepts from my notes in bullet points.";
+    const userMsg = "Generate a comprehensive Study Guide from my notes. Include a summary, key terms, and FAQs.";
     setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setIsAiLoading(true);
 
@@ -359,8 +421,8 @@ const Study: React.FC = () => {
     <div className="md:h-[calc(100vh-5rem)] flex flex-col pb-24 md:pb-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-on-surface">Study Hub</h1>
-          <p className="text-on-surface-variant">Manage subjects, take notes, and chat with your AI tutor.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-on-surface">Notebook LM</h1>
+          <p className="text-on-surface-variant">Manage subjects, upload source texts, and chat with your AI tutor.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           {!googleAccessToken && (
@@ -449,8 +511,8 @@ const Study: React.FC = () => {
             <div className="flex-1 flex flex-col bg-surface-container-lowest rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden min-h-[50vh]">
               <div className="p-4 border-b border-outline-variant/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-low/50">
                 <div className="flex items-center gap-2">
-                  <BookOpen size={18} className="text-primary" />
-                  <h2 className="font-bold text-on-surface">Notes</h2>
+                  <FileText size={18} className="text-primary" />
+                  <h2 className="font-bold text-on-surface">Sources & Notes</h2>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button 
@@ -459,6 +521,10 @@ const Study: React.FC = () => {
                   >
                     <CalendarIcon size={14} /> Schedule
                   </button>
+                  <label className="flex items-center gap-2 text-xs font-bold bg-surface-container border border-outline-variant/20 text-on-surface hover:bg-surface-container-low px-3 py-1.5 rounded-lg cursor-pointer transition-colors">
+                    <Upload size={14} /> Upload .txt
+                    <input type="file" accept=".txt,.md,.csv" className="hidden" onChange={handleFileUpload} />
+                  </label>
                   <button 
                     onClick={handleCreateNote}
                     className="flex items-center gap-2 text-xs font-bold bg-primary-container/30 text-primary px-3 py-1.5 rounded-lg hover:bg-primary-container/50 transition-colors"
@@ -471,6 +537,7 @@ const Study: React.FC = () => {
               <div className="flex-1 flex flex-col sm:flex-row min-h-0">
                 {/* Notes List */}
                 <div className="w-full sm:w-1/3 border-b sm:border-b-0 sm:border-r border-outline-variant/20 overflow-y-auto p-2 space-y-1 max-h-[30vh] sm:max-h-none">
+                  <div className="px-2 py-1 mb-2 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">{notes.length} Sources</div>
                   {notes.map(note => (
                     <div 
                       key={note.id}
@@ -544,19 +611,26 @@ const Study: React.FC = () => {
                   <MessageSquare size={16} className="text-primary" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-on-surface text-sm">Study Assistant</h2>
-                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">NotebookLM Clone</p>
+                  <h2 className="font-bold text-on-surface text-sm">NotebookLM Chat</h2>
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">{notes.length} sources loaded</p>
                 </div>
               </div>
 
               {/* Quick Actions */}
               <div className="px-4 pt-4 pb-2 flex gap-2 overflow-x-auto dark-scrollbar shrink-0">
                 <button 
+                  onClick={handleGeneratePodcast}
+                  disabled={isAiLoading}
+                  className="shrink-0 text-xs flex items-center gap-1 font-bold bg-primary hover:bg-primary/90 text-on-primary px-3 py-1.5 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                >
+                  🎧 Audio Overview (Transcript)
+                </button>
+                <button 
                   onClick={handleSummarize}
                   disabled={isAiLoading}
                   className="shrink-0 text-xs font-bold bg-surface-container-low hover:bg-surface-container text-on-surface px-3 py-1.5 rounded-lg transition-colors border border-outline-variant/20 disabled:opacity-50"
                 >
-                  Summarize Notes
+                  Study Guide
                 </button>
                 <button 
                   onClick={handleGenerateQuiz}
