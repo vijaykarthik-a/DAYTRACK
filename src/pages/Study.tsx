@@ -297,12 +297,12 @@ const Study: React.FC = () => {
       body: JSON.stringify({ contents: userMsg, systemInstruction })
     });
     
+    const responseText = await res.text();
     let data;
     try {
-      data = await res.json();
+      data = JSON.parse(responseText);
     } catch (e) {
-      const textError = await res.text();
-      throw new Error(`Server returned an error: ${res.statusText}. ${textError.substring(0, 100)}...`);
+      throw new Error(`Server returned an error: ${res.statusText}. ${responseText.substring(0, 100)}...`);
     }
     
     if (!res.ok) throw new Error(data.error || 'Unknown error from AI generation');
