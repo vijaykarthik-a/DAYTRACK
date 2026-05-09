@@ -291,7 +291,7 @@ const Study: React.FC = () => {
   };
 
   const generateAIContent = async (userMsg: string, systemInstruction: string) => {
-    const res = await fetch('/api/generate', {
+    const res = await fetch('/ai-generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: userMsg, systemInstruction })
