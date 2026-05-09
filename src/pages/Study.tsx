@@ -21,6 +21,11 @@ import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
 import { format } from 'date-fns';
 
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set up the worker for pdf.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -135,31 +140,54 @@ const Study: React.FC = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user || !selectedSubjectId) return;
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const text = event.target?.result as string;
-      if (text) {
-        try {
-          const newNote = await addDoc(collection(db, 'study_notes'), {
-            subjectId: selectedSubjectId,
-            title: file.name,
-            content: text,
-            userId: user.uid,
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-          });
-          setSelectedNoteId(newNote.id);
-        } catch (error) {
-          handleFirestoreError(error, OperationType.CREATE, 'study_notes');
+    let text = '';
+    
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let pdfText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items.map((item: any) => item.str).join(' ');
+          pdfText += pageText + '\\n';
         }
+        text = pdfText;
+      } catch (error) {
+        console.error("Error reading PDF:", error);
+        alert("Failed to read PDF file.");
+        e.target.value = '';
+        return;
       }
-    };
-    reader.readAsText(file);
-    // reset input
+    } else {
+      text = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve((event.target?.result as string) || '');
+        reader.readAsText(file);
+      });
+    }
+
+    if (text) {
+      try {
+        const newNote = await addDoc(collection(db, 'study_notes'), {
+          subjectId: selectedSubjectId,
+          title: file.name,
+          content: text.substring(0, 30000), // Limit length for safety
+          userId: user.uid,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        });
+        setSelectedNoteId(newNote.id);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, 'study_notes');
+      }
+    }
+    
     e.target.value = '';
   };
 
@@ -522,8 +550,8 @@ const Study: React.FC = () => {
                     <CalendarIcon size={14} /> Schedule
                   </button>
                   <label className="flex items-center gap-2 text-xs font-bold bg-surface-container border border-outline-variant/20 text-on-surface hover:bg-surface-container-low px-3 py-1.5 rounded-lg cursor-pointer transition-colors">
-                    <Upload size={14} /> Upload .txt
-                    <input type="file" accept=".txt,.md,.csv" className="hidden" onChange={handleFileUpload} />
+                    <Upload size={14} /> Upload PDF/Text
+                    <input type="file" accept=".txt,.md,.csv,.pdf,application/pdf" className="hidden" onChange={handleFileUpload} />
                   </label>
                   <button 
                     onClick={handleCreateNote}
