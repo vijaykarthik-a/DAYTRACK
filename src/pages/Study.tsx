@@ -290,6 +290,17 @@ const Study: React.FC = () => {
     }
   };
 
+  const generateAIContent = async (userMsg: string, systemInstruction: string) => {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: userMsg, systemInstruction })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    return data.text;
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentMessage.trim()) return;
@@ -300,25 +311,12 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
-      }
-      const ai = new GoogleGenAI({ apiKey });
-      
       // Gather all notes for context
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: userMsg,
-        config: {
-          systemInstruction: systemInstruction,
-        }
-      });
-
-      setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
+      const text = await generateAIContent(userMsg, systemInstruction);
+      setChatMessages(prev => [...prev, { role: 'ai', text: text || 'Sorry, I could not generate a response.' }]);
     } catch (error: any) {
       console.error("AI Error:", error);
       setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
@@ -338,23 +336,11 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
-      }
-      const ai = new GoogleGenAI({ apiKey });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: userMsg,
-        config: {
-          systemInstruction: systemInstruction,
-        }
-      });
-
-      setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
+      const text = await generateAIContent(userMsg, systemInstruction);
+      setChatMessages(prev => [...prev, { role: 'ai', text: text || 'Sorry, I could not generate a response.' }]);
     } catch (error: any) {
       console.error("AI Error:", error);
       setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
@@ -374,19 +360,11 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("Gemini API key is missing.");
-      const ai = new GoogleGenAI({ apiKey });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions.\n\nUser's Notes:\n${contextNotes}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: userMsg,
-        config: { systemInstruction }
-      });
-
-      setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
+      const text = await generateAIContent(userMsg, systemInstruction);
+      setChatMessages(prev => [...prev, { role: 'ai', text: text || 'Sorry, I could not generate a response.' }]);
     } catch (error: any) {
       console.error("AI Error:", error);
       setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
@@ -406,23 +384,11 @@ const Study: React.FC = () => {
     setIsAiLoading(true);
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Gemini API key is missing. Please add GEMINI_API_KEY to the Secrets panel in AI Studio.");
-      }
-      const ai = new GoogleGenAI({ apiKey });
       const contextNotes = notes.map(n => `Title: ${n.title}\nContent:\n${n.content}`).join('\n\n---\n\n');
       const systemInstruction = `You are a helpful study assistant. Use the following notes provided by the user to answer their questions. If the answer is not in the notes, use your general knowledge but mention that it's not in their notes.\n\nUser's Notes:\n${contextNotes}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: userMsg,
-        config: {
-          systemInstruction: systemInstruction,
-        }
-      });
-
-      setChatMessages(prev => [...prev, { role: 'ai', text: response.text || 'Sorry, I could not generate a response.' }]);
+      const text = await generateAIContent(userMsg, systemInstruction);
+      setChatMessages(prev => [...prev, { role: 'ai', text: text || 'Sorry, I could not generate a response.' }]);
     } catch (error: any) {
       console.error("AI Error:", error);
       setChatMessages(prev => [...prev, { role: 'ai', text: `Error connecting to AI assistant: ${error.message || 'Unknown error'}` }]);
