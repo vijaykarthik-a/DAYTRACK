@@ -230,6 +230,12 @@ service cloud.firestore {
              data.userId == request.auth.uid;
     }
 
+    function isValidJournalEntry(data) {
+      return data.text is string &&
+             data.createdAt is timestamp &&
+             data.userId == request.auth.uid;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -307,6 +313,13 @@ service cloud.firestore {
       allow read: if isDocOwner() || isAdmin();
       allow create: if isRequestOwner() && isValidDietLog(request.resource.data);
       allow update: if isDocOwner() && isRequestOwner() && isValidDietLog(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /journal/{entryId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isRequestOwner() && isValidJournalEntry(request.resource.data);
+      allow update: if isDocOwner() && isRequestOwner() && isValidJournalEntry(request.resource.data);
       allow delete: if isDocOwner() || isAdmin();
     }
 

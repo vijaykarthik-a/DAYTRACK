@@ -140,6 +140,20 @@
         "userId": { "type": "string" }
       },
       "required": ["food", "calories", "date", "userId"]
+    },
+    "JournalEntry": {
+      "title": "Journal Entry",
+      "description": "A daily journal entry",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "dateString": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["text", "createdAt", "userId"]
     }
   },
   "firestore": {
@@ -153,6 +167,7 @@
     "tracker_logs/{logId}": { "schema": "TrackerLog", "description": "Tracker logs collection" },
     "study_subjects/{subjectId}": { "schema": "StudySubject", "description": "Study subjects collection" },
     "study_notes/{noteId}": { "schema": "StudyNote", "description": "Study notes collection" },
-    "diet_logs/{logId}": { "schema": "DietLog", "description": "Diet logs collection" }
+    "diet_logs/{logId}": { "schema": "DietLog", "description": "Diet logs collection" },
+    "journal/{entryId}": { "schema": "JournalEntry", "description": "Journal entries collection" }
   }
 }
