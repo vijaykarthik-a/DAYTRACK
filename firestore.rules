@@ -231,9 +231,12 @@ service cloud.firestore {
     }
 
     function isValidJournalEntry(data) {
-      return data.text is string &&
+      return data.userId == request.auth.uid &&
              data.createdAt is timestamp &&
-             data.userId == request.auth.uid;
+             (data.get('text', '') is string) &&
+             (data.get('title', '') is string) &&
+             (data.get('subtitle', '') is string) &&
+             (data.get('dateString', '') is string);
     }
 
     // ===============================================================
