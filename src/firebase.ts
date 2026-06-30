@@ -10,7 +10,7 @@ import {
   signInWithEmailAndPassword,
   updateProfile
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, Timestamp, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, Timestamp, getDocFromServer, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -98,6 +98,7 @@ export {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  GoogleAuthProvider
+  GoogleAuthProvider,
+  getDocs
 };
 export type { User };

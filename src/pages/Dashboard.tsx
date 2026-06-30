@@ -15,13 +15,14 @@ import {
   Star,
   Flame
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { db, collection, query, where, onSnapshot, Timestamp, doc, setDoc, deleteDoc, handleFirestoreError, OperationType } from '../firebase';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { db, collection, query, where, onSnapshot, Timestamp, doc, setDoc, deleteDoc, handleFirestoreError, OperationType, getDocs } from '../firebase';
 import { Task, Routine, RoutineLog } from '../types';
 import { Link } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Trash2 } from 'lucide-react'; // ADD TRASH2 IMPORT
+import { Trash2, Mail } from 'lucide-react';
+import { generateMonthlyReportHTML } from '../utils/report';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -199,6 +200,100 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const [isSendingReport, setIsSendingReport] = useState(false);
+
+  const handleSendMonthlyReport = async () => {
+    if (!user) return;
+    if (!googleAccessToken) {
+      alert("Please connect your Google Workspace account to send emails. Make sure to allow Gmail access.");
+      connectGoogleCalendar();
+      return;
+    }
+
+    try {
+      setIsSendingReport(true);
+      
+      const now = new Date();
+      const monthStart = startOfMonth(now);
+      const monthEnd = endOfMonth(now);
+
+      // Fetch completed tasks this month
+      const tasksQuery = query(
+        collection(db, 'tasks'),
+        where('userId', '==', user.uid),
+        where('status', '==', 'done')
+      );
+      const tasksSnap = await getDocs(tasksQuery);
+      const allTasks = tasksSnap.docs.map(doc => doc.data());
+      const monthlyTasks = allTasks.filter(t => {
+        if (!t.dueDate) return false;
+        const d = t.dueDate.toDate();
+        return d >= monthStart && d <= monthEnd;
+      });
+
+      // Fetch journal entries this month
+      const journalQuery = query(
+        collection(db, 'journal'),
+        where('userId', '==', user.uid),
+        where('createdAt', '>=', Timestamp.fromDate(monthStart)),
+        where('createdAt', '<=', Timestamp.fromDate(monthEnd))
+      );
+      const journalSnap = await getDocs(journalQuery);
+      const monthlyJournals = journalSnap.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          dateString: data.dateString || format(data.createdAt.toDate(), 'yyyy-MM-dd')
+        };
+      });
+
+      const monthName = format(now, 'MMMM yyyy');
+      const htmlContent = generateMonthlyReportHTML(monthlyTasks, monthlyJournals, monthName);
+
+      const emailLines = [
+        `To: ${user.email}`,
+        `Subject: Your DailyFlow Summary for ${monthName}`,
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        htmlContent
+      ];
+      const email = emailLines.join('\r\n');
+      
+      const base64EncodedEmail = btoa(unescape(encodeURIComponent(email)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+        
+      const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${googleAccessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          raw: base64EncodedEmail
+        })
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          alert("Gmail access expired or not granted. Please reconnect your account and ensure you check the box for Gmail permissions.");
+          connectGoogleCalendar();
+        } else {
+          throw new Error('Failed to send email');
+        }
+        return;
+      }
+
+      alert("Monthly summary successfully sent to your email!");
+    } catch (error) {
+      console.error("Failed to send report:", error);
+      alert("Failed to send the report. Please try again later.");
+    } finally {
+      setIsSendingReport(false);
+    }
+  };
+
   const todayTasks = tasks.filter(t => {
     if (!t.dueDate) return false;
     const date = t.dueDate.toDate();
@@ -261,14 +356,25 @@ const Dashboard: React.FC = () => {
             Hey, {profile?.displayName.split(' ')[0] || 'User'}
           </h1>
         </div>
-        <div className="bg-surface-container-lowest px-6 py-4 rounded-2xl shadow-sm border border-outline-variant/20 flex items-center gap-4">
-          <Clock className="text-primary" size={24} />
-          <div className="flex flex-col">
-            <p className="text-3xl font-semibold tracking-tight text-on-surface leading-none flex items-baseline gap-1">
-              {format(currentTime, 'h:mm')}
-              <span className="text-xl text-on-surface-variant font-medium">{format(currentTime, ':ss a')}</span>
-            </p>
-            <p className="text-xs font-medium text-on-surface-variant mt-1">Live Time</p>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <button 
+            onClick={handleSendMonthlyReport}
+            disabled={isSendingReport}
+            className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-primary text-on-primary font-bold shadow-sm hover:shadow-md hover:bg-primary/90 transition-all w-full sm:w-auto"
+          >
+            <Mail size={20} />
+            {isSendingReport ? "Sending..." : "Email Monthly Summary"}
+          </button>
+          
+          <div className="bg-surface-container-lowest px-6 py-4 rounded-2xl shadow-sm border border-outline-variant/20 flex items-center gap-4 w-full sm:w-auto">
+            <Clock className="text-primary" size={24} />
+            <div className="flex flex-col">
+              <p className="text-3xl font-semibold tracking-tight text-on-surface leading-none flex items-baseline gap-1">
+                {format(currentTime, 'h:mm')}
+                <span className="text-xl text-on-surface-variant font-medium">{format(currentTime, ':ss a')}</span>
+              </p>
+              <p className="text-xs font-medium text-on-surface-variant mt-1">Live Time</p>
+            </div>
           </div>
         </div>
       </div>

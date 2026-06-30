@@ -124,19 +124,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const provider = new GoogleAuthProvider();
       provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
       provider.addScope('https://www.googleapis.com/auth/calendar.events');
+      provider.addScope('https://www.googleapis.com/auth/gmail.send');
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
         setGoogleAccessToken(credential.accessToken);
       }
     } catch (error: any) {
-      console.error('Google Calendar connection failed:', error);
+      console.error('Google Workspace connection failed:', error);
       if (error.code === 'auth/popup-closed-by-user') {
-        alert("The popup was closed.\n\nIf you saw a 'Google hasn't verified this app' warning, you MUST click 'Advanced' at the bottom, then click 'Go to DailyFlow (unsafe)' to connect your calendar.\n\nNOTE FOR MOBILE USERS: If the popup doesn't appear at all, your browser might be blocking it. Please try opening this app in a new tab or use a desktop browser.");
+        alert("The popup was closed.\n\nIf you saw a 'Google hasn't verified this app' warning, you MUST click 'Advanced' at the bottom, then click 'Go to DailyFlow (unsafe)' to connect your account.\n\nNOTE FOR MOBILE USERS: If the popup doesn't appear at all, your browser might be blocking it. Please try opening this app in a new tab or use a desktop browser.");
       } else if (error.code === 'auth/popup-blocked') {
         alert("The login popup was blocked by your browser.\n\nNOTE FOR MOBILE USERS: Please tap the 'Open in new tab' button at the top of the screen, or check your browser settings to allow popups for this site.");
       } else {
-        alert("Failed to connect to Google Calendar: " + error.message + "\n\nIf you are on mobile, try opening the app in a new tab.");
+        alert("Failed to connect to Google Workspace: " + error.message + "\n\nIf you are on mobile, try opening the app in a new tab.");
       }
     }
   };
